@@ -44,7 +44,7 @@ td { text-align: left;  padding-left: 0.4em; border: none;  padding-right: 0.4em
 
 </style>
 
-<title>Abort-only contract support</title>
+<title>Minimum Contract Support: either Ignore or Check_and_abort</title>
 
 </head>
 <body>
@@ -68,7 +68,7 @@ td { text-align: left;  padding-left: 0.4em; border: none;  padding-right: 0.4em
 
 
 
-<h1>Abort-only contract support</h1>
+<h1>Minimum Contract Support: either Ignore or Check_and_abort</h1>
 
 
 <p> This paper proposes a contract support framework which is smaller than
@@ -1002,7 +1002,7 @@ public:
     </p>
     
 <pre>MyClass:MyClass(int i)
-  : member((assert(i &gt; 0), i)
+  : member((assert(i &gt; 0), i))
 {}
 </pre>
 
@@ -1150,6 +1150,8 @@ auto f(auto i)
 
 
 
+
+
 <h2><a name="wording">6. Wording</a></h2>
 
 
@@ -1232,7 +1234,7 @@ before the destruction of function parameters.</p>
     <i>attribute-specifier</i>:<p>
     <ul class="grammar">
       <li><tt>[ [ </tt><i>attribute-using-prefix<sub>opt</sub>&nbsp;&nbsp;attribute-list</i><tt> ] ]</tt></li>
-      <li><ins><i>correctness-attribute-specifier</i></ins></li>
+      <li><ins><i>correctness-specifier</i></ins></li>
       <li><i>alignment-specifier</i></li>
     </ul>
     <p>…</p>
@@ -1256,21 +1258,21 @@ before the destruction of function parameters.</p>
   Correctness attributes are used to specify preconditions, postconditions, and assertions for functions. </p>
 
   <blockquote class="grammar">
-  <p><i>correctness-attribute-specifier</i>:</p>
+  <p><i>correctness-specifier</i>:</p>
   <ul class="grammar">
     <li><tt>[ [ pre :</tt>&nbsp;<i>conditional-expression</i><tt> ] ]</tt></li>
-    <li><tt>[ [ post</tt> <i>identifier<sub>opt</sub> </i><tt>:</tt>&nbsp;<i>conditional-expression</i><tt> ] ]</tt></li>
+    <li><tt>[ [ post </tt><i>identifier<sub>opt</sub> </i><tt>:</tt>&nbsp;<i>conditional-expression</i><tt> ] ]</tt></li>
     <li><tt>[ [ assert :</tt>&nbsp;<i>conditional-expression</i><tt> ] ]</tt></li>
   </ul>
   </blockquote>
 
 <p> 2.
 
-  A <i>correctness-attribute-specifier</i> using <tt>pre</tt> is a <i>precondition</i>.
+  A <i>correctness-specifier</i> using <tt>pre</tt> is a <i>precondition</i>.
 
   The attribute may be applied to the function type of a function declaration.
 
-  [<i>Note</i>: A precondition expresses a predicate on function arguments and namespace-scope objects.
+  [<i>Note</i>: A precondition expresses a predicate.
   If evaluated upon entry into the function and the result is <code>false</code>, this indicates that
   the program contains a bug. — <i>end note</i>].
   </p>
@@ -1284,44 +1286,57 @@ before the destruction of function parameters.</p>
 
 <p> 3.
 
-  A <i>correctness-attribute-specifier</i> using <tt>post</tt> is a <i>postcondition</i>.
+  A <i>correctness-specifier</i> using <tt>post</tt> is a <i>postcondition</i>.
 
   The attribute may be applied to the function type of a function declaration.
 
-  [<i>Note</i>: A postcondition expresses a predicate on function arguments, its return value
-  and namespace-scope objects. If evaluated when the function returns to its caller
+  [<i>Note</i>: A postcondition expresses a predicate.
+  If evaluated when the function returns to its caller
   and the result is <code>false</code>, this indicates that the program contains a bug. — <i>end note</i>]
 
   A postcondition may introduce an identifier to represent the glvalue result or the prvalue result object of
   the function. When the declared return type of a non-templated function contains a placeholder type, the
-  optional <em>identifier</em> shall only be present in a definition.
+  optional <em>identifier</em> shall be present only in a definition.
 
-[<i>Example</i>:
-</p><pre>int g(double * p)
-  [[post res: res != 0 &amp;&amp; p != nullptr &amp;&amp; *p &lt;= 0.0]];
+[<i>Example</i>:</p>
 
-auto h(int x)
-  [[post res: true]]; <em>// error: cannot name the return value</em>
+<pre>int f(int&amp; p)
+  [[post: p &gt;= 0]]     <em>// OK</em>
+  [[post r: r &gt;= 0]];  <em>// OK</em>
+
+auto g(auto&amp; p)
+  [[post: p &gt;= 0]]     <em>// OK</em>
+  [[post r: r &gt;= 0]];  <em>// OK</em>
+
+auto h(int&amp; p)
+  [[post: p &gt;= 0]]     <em>// OK</em>
+  [[post r: r &gt;= 0]];  <em>// error: cannot name the return value</em>
+
+auto h(int&amp; p)
+  [[post: p &gt;= 0]]     <em>// OK</em>
+  [[post r: r &gt;= 0]]   <em>// OK</em>
+{
+  return p = 0;
+}
 </pre>
 <p> — <i>end example</i>]</p>
 <p></p>
 
 
 <p> 4.
-  A <i>correctness-attribute-specifier</i> using <tt>assert</tt> is an <i>assertion</i>.
+  A <i>correctness-specifier</i> using <tt>assert</tt> is an <i>assertion</i>.
 
   The attribute may be applied to a null statement (8.3).
 
-  [<i>Note</i>: An assertion expresses a predicate on automatic variables,
-  function arguments and namespace-scope objects.
-  If evaluated in its location in a function body and the result is <code>false</code>,
+  [<i>Note</i>: An assertion expresses a predicate.
+  If evaluated and the result is <code>false</code>,
   this indicates that the program contains a bug. — <i>end note</i>]
 
   An assertion correctness test is performed as part of the evaluation of the null statement the assertion applies to.
 </p>
 
 <p>5. Preconditions, postconditions, and assertions are collectively called <em>correctness annotations</em>.
-The <em>conditional-expression</em> in a contract is contextually converted to <code>bool</code> (7.3);
+The <em>conditional-expression</em> in a correctness annotation is contextually converted to <code>bool</code> (7.3);
 the converted expression is called the <em>predicate</em> of the correctness annotation.
 
 [<i>Note</i>: The predicate of a correctness annotation is potentially evaluated (6.3). — <i>end note</i>]
@@ -1338,12 +1353,18 @@ the converted expression is called the <em>predicate</em> of the correctness ann
 
 <p> 1.
   A <i>contract annotation</i> is a precondition or a postcondition.
+  
   A contract annotation may be applied to the function type of a function declaration.
-  The first declaration of a function shall specify all contract annotations (if any) of the function.
-  Subsequent declarations shall either specify no contract annotations or the same list of contract annotations;
+  
+  The first declaration of a function <em>D</em> shall specify all contract annotations (if any) of the function.
+  Other declarations of the function reachable (10.7) from <em>D</em> shall either specify no contract annotations
+  or the same list of contract annotations;
   no diagnostic is required if corresponding conditions will always evaluate to the same value.
-  The list of contract annotations of a function shall be the same if the declarations of that function
-  appear in different translation units; no diagnostic required.
+  
+  If declarations of function <em>F</em> appear in two translation units, the first declarations of <em>F</em>
+  in either translation unit their lists of contract annotations shall be the same; no diagnostic required;
+  also no diagnostic is required if corresponding conditions will always evaluate to the same value.  
+  
   If a friend declaration <em>D</em> is the first declaration of the function in a translation unit
   and has a contract annotation, that declaration shall be a definition
   and there shall be no other
@@ -1366,7 +1387,7 @@ the converted expression is called the <em>predicate</em> of the correctness ann
 
   Two contract annotations are the same if their predicates are the same.
 
-  Two predicates contained in <i>correctness-attribute-specifier</i>s are the same if they would satisfy the one-definition rule
+  Two predicates contained in <i>correctness-specifier</i>s are the same if they would satisfy the one-definition rule
   (6.3 <tt><b>[basic.def.odr]</b></tt>) were they to appear in function definitions, except for renaming of parameters,
   return value identifiers (if any), and renaming of template parameters.
   </p>
@@ -1375,14 +1396,11 @@ the converted expression is called the <em>predicate</em> of the correctness ann
 
 [<i>Note</i>: A function pointer cannot include contract conditions. [<i>Example</i>:
 
-</p><pre>typedef int (*fpt)() [[post r: r != 0]]; <em>// error: contract annotation not on a function declaration</em>
+</p><pre>typedef int (*pfa)() [[post r: r != 0]]; <em>// error: contract annotation not on a function declaration</em>
 
 int g(int x)
-  [[pre: x &gt;= 0]]
-  [[post r: r &gt; x]]
-{
-  return x+1;
-}
+  [[pre: x != 0]]
+  [[post r: r != 0]];
 
 int (*pf)(int) = g; <em>// OK</em>
 int x = pf(5);      <em>// contract annotations of g are tested</em>
@@ -1429,29 +1447,26 @@ note</i>]
 If a function has multiple preconditions,
 their tests (if any) will be performed in the order they appear lexically.
 
-A <em>basic precondition test sequence</em> of a given function <code>f</code> is the sequence of
-precondition tests corresponding to the list of preconditions of <code>f</code>.
-
-A <em>basic precondition test sequence</em> of a given function <code>f</code> is the sequence of
+The <em>basic precondition test sequence</em> of a given function <code>f</code> is the sequence of
 precondition tests corresponding to the list of preconditions of <code>f</code>.
 
 If a function has multiple postconditions,
 their tests (if any) will be performed in the order they appear lexically.
 
-A <em>postcondition test sequence</em> of a given function is the sequence of
+The <em>basic postcondition test sequence</em> of a given function is the sequence of
 postcondition tests corresponding to the list of postconditions of the function.
 
 [<i>Note</i>: A basic precondition test sequence can be empty if the function has
  not preconditions. — <i>end note</i>]
 
 [<i>Example</i>:
-</p><pre>void f(int * p, int * q)
-  [[post: *p == 1]]      <em>// #4</em>
-  [[pre: p != nullptr]]  <em>// #1</em>
-  [[post: *q == 1]]      <em>// #5</em>
-  [[pre: p != nullptr]]  <em>// #2</em>
+</p><pre>void f(int* p, int*&amp; q)
+  [[post: q != nullptr]] <em>// #4</em>
+  [[pre:  p != nullptr]] <em>// #1</em>
+  [[post: *q &gt;= 0]]      <em>// #5</em>
+  [[pre:  *p &gt;= 0]]      <em>// #2</em>
 {
-  *p = *q = 1;           <em>// #3</em>
+  q = p;                 <em>// #3</em>
 }
 </pre>
 
@@ -1524,34 +1539,37 @@ in all translation units is conditionally-supported with implementation-defined 
 
 <p> 3.
 
-A <em>trivial correctness annotation test</em> is performed as follows. 
-It is unspecified whether the predicate is evaluated. If it is 
-evaluated, the result of the predicate is discarded. Objects and 
-functions named in the predicate are odr-used.
+An <em>ignored correctness annotation test</em> performs no operation. 
 
+[<i>Note</i>: The predicate is potentially-evaluated (6.3). —<i>end note</i>]
+ 
 </p>
 
 <p> 4.
 
-A <em>non-trivial correctness annotation test</em> is performed as follows.
-The predicate is evaluated. If the evaluation exits via en exception, <code>std::terminate()</code> is called.
+An <em>enforced correctness annotation test</em> is performed as follows.
+The predicate is evaluated. If the evaluation exits via an exception, <code>std::terminate()</code> is called.
 If the evaluation exits via a call to <code>longjmp</code> (17.13.3) the behavior is undefined.
-An implementation is allowed to substitute the evaluation of predicate <code>P</code>
-that returns to the caller with an alternative predicate, call it <code>R(P)</code>,
+An implementation is allowed to substitute the evaluation of a predicate <code>P</code>
+that returns to the caller with an alternative predicate
 that returns the same value as <code>P</code> but has no side effects.
-A non-trivial correctness annotation test where the evaluation of <code>P</code> or <code>R(P)</code>
+An enforced correctness annotation test where the evaluation of <code>P</code>
  returns <code>false</code> is called <em>unsuccessful</em>.
- For an unsuccessful correctness annotation test the <em>contract violation handler</em> is invoked. The contract violation handler does not exit via an exception or via a call to <code>longjmp</code> (17.13.3). The semantics of the contract violation handler are implementation defined.
+ 
+For an unsuccessful correctness annotation test the <em>contract violation handler</em> is invoked.
+The contract violation handler does not exit via an exception or via a call to <code>longjmp</code> (17.13.3). 
+The semantics of the contract violation handler are implementation defined.
 
 </p>
 
 <p> 5.
 
 <i>Recommended practice</i>: The contract violation handler should by 
-default output to the standard diagnostic output the message containing 
-the textual representation of the predicate and the location in the 
-source code of the place where predicate was evaluated. For 
-preconditions the source location should be
+default output to the stream buffer associated with the object 
+<code>stderr</code>, declared in <code>&lt;cstdio&gt;</code> (29.13.1),
+the message containing the textual representation of the predicate and 
+the location in the source code where the predicate was evaluated.
+For preconditions the source location should be
 that where the function containing the corresponding contract annotation
  was called. For postconditions, the source location should be inside 
 the function definition.
@@ -1582,20 +1600,20 @@ or static storage duration are executed. Functions passed to <code>atexit()</cod
 
 <p> 8.
 
-In translation mode <em>enforce</em> all correctness annotation tests are non-trivial. In translation mode <em>ignore</em>
- during constant evaluation (7.7) it is implementation defined whether 
-correctness annotation tests are trivial or non-trivial. In all other 
-situations in <em>ignore</em> mode all correctness annotation tests are trivial.
+In translation mode <em>enforce</em> all correctness annotation tests are enforced. In translation mode <em>ignore</em>
+ during constant evaluation (7.7) it is implementation-defined whether 
+correctness annotation tests are ignored or enforced. In all other 
+situations in <em>ignore</em> translation mode all correctness annotation tests are ignored.
 
 </p>
 
 <p>9.
 Let <code>PRE</code> denote the basic precondition test sequence of a given function <code>f</code>.
-When performing non-trivial contract annotation tests, it is unspecified if <code>PRE</code> is performed one or two times.
+When performing enforced contract annotation tests, it is unspecified if <code>PRE</code> is performed one or two times.
 This is called a <em>precondition test sequence</em>.
 
 Let <code>POST</code> denote the basic postcondition test sequence of a given function <code>f</code>.
-When performing non-trivial contract annotation tests, it is unspecified if <code>POST</code> is performed one or two times.
+When performing enforced contract annotation tests, it is unspecified if <code>POST</code> is performed one or two times.
 This is called a <em>postcondition test sequence</em>.
 
 [<i>Note</i>: This allows the implementations to test the precondition 
@@ -1605,12 +1623,10 @@ body. — <i>end note</i>]
 </p>
 
 <p> 10.
-If the execution two contract annotation tests <code>T1</code> and <code>T2</code> corresponding to the same contact annotations (9.12.4.2),
+If the execution of two contract annotation tests <code>T1</code> and <code>T2</code> corresponding to the same contact annotations (9.12.4.2),
 where <code>T1</code> precedes <code>T2</code>,
 is separated only by other contract annotation tests, the implementation is allowed to skip the execution of <code>T2</code>.
-</p>
 
-<p> 11.
 Given any two contract annotation tests <code>T1</code> and <code>T2</code>, where <code>T1</code> precedes <code>T2</code>,
 either consecutive or separated only by other contract annotations, if substituting the predicate of <code>T1</code> with its side-effect-less equivalent,
 changes <code>T2</code> from being successful to unsuccessful or vice versa, the behavior is undefined when <code>T2</code> is performed.
@@ -1618,7 +1634,15 @@ changes <code>T2</code> from being successful to unsuccessful or vice versa, the
 
 </blockquote>
 
-<p class="editor">This should allow the implementations to elide the check even if it has side effects affecting subsequent checks.</p>
+<p class="editor">This should allow the implementations to elide the check even if it has side effects affecting subsequent checks.
+The goal is to allow the elision even in the situation like this:</p>
+
+<pre class="editor">
+int produce() [[post r: pred(r)]];
+void consume(int i) [[pre: pred(i)]];
+
+consume(produce()); <em>// pred() may be called just once</em> 
+</pre>
 
 
 <p>In 11.7.3 [class.virtual] add a new paragraph after 11.7.3/17:</p>
@@ -1629,7 +1653,7 @@ changes <code>T2</code> from being successful to unsuccessful or vice versa, the
 <p> 18.
 
 If an overriding function specifies contract annotations (9.12.4), it shall specify the same list of contract
-annotations as its overridden functions; no diagnostic is required if predicates of corresponding annotations will always
+annotations as its overridden functions; no diagnostic is required if predicates of corresponding contract annotations always
 evaluate to the same value. Otherwise, it is considered to have the list of contract annotations from one of
 its overridden functions; the names in the contract annotations are bound, and the semantic constraints are
 checked, at the point where the contract annotations appear. Given a virtual function <code>f</code> with a contract
@@ -1685,7 +1709,7 @@ specialization are independent of those of the primary template.— <i>end note<
 
 <blockquote class="stdins">
 <p>
-— when test of the correctness annotation (9.12.4) exits via an exception, or
+— when a correctness annotation test (9.12.4) exits via an exception, or
 </p>
 </blockquote>
 
