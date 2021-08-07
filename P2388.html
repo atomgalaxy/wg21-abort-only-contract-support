@@ -517,7 +517,7 @@ int main()
 
 
 
-<h2><a name="rationale">4. Design rationale <span class="link">{rat}</span></a></h2>
+<h2><a name="rat">4. Design rationale <span class="link">{rat}</span></a></h2>
 
 
 <h3><a name="rationale.non_attribute">4.1. Why not use attributes</a></h3>
@@ -1244,6 +1244,39 @@ auto f(auto i)
     <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1323r2.html">[P1323R2]</a>.
     </p>
 
+
+
+<h3><a name="rat.opt">4.19 Contract-based optimizations
+    <span class="link">{rat.opt}</span></a></h3>
+
+
+<p> This proposal does not allow code transformations based on assumption that
+    predicates in correcness annotations always evalueate to <code>true</code>.
+    Such transformations could change the program (even parts far before the
+    contract annotation) in a surprising way.</p>
+
+<p> We believe that removing this provision increases the level of consensus.</p>
+
+<p> On the other hand, we believe that the Standard does not have to explicitly
+    allow such transformations. First, they can never be guaranteed or required:
+    a compiler vendor must choose to make an effort and implement them. If a
+    compiler vendor implements such transformations, it can offer the feature
+    as a non-confoirming extension, such as </code>__builtin_unreachable()</code>.
+    </p>
+
+<p> In fact, this proposal indirectly allows the programmer to achieve the same
+    effect, provided that the compiler vendor provides the necessary parts.
+    This proposal says that what happens in response to contract violaiton is
+    implementaiton defined. a conforming implementation may allow the programmer
+    to install a callback to be called on such occasion (a contract violation
+    handler). The programmer may then choos to put <code>__builtin_unreachable()</code>
+    inside the handler. The implementation then would have to guarantee that
+    the handler is inlined.</p>
+
+<p> This should not be alarming to people focused on safety, because the above
+    scenario requires the usage of <code>__builtin_unreachable()</code>, which
+    is easily detectable through simple mechanical checks, and non-conforming.
+    </p>     
 
 
 
