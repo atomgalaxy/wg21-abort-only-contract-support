@@ -384,7 +384,10 @@ int main() {
     that it is missing features.</p>
 
 
+
+
 <h2><a name="des">3. Design details <span class="link">{des}</span></a></h2>
+
 
 
 <h3><a name="des.gol">3.1. Design goals <span class="link">{des.gol}</span></a></h3>
@@ -402,7 +405,7 @@ int main() {
     extensions as possible. The goal is to deliver a small piece fast.
     We demonstarte whow additional &mdash; often requested &mdash; features
     can be added on top of this proposal while preservind backwards compatibility.
-  </p>
+   </p>
 
 <p> We want the proposal to be zero-overhead: programmers should be able to
     add contract annotations and compile the program in a mode that doesn't add
@@ -514,6 +517,119 @@ int main()
     extension would be a notation for inexpressible conditions as discussed in
     <a href="https://isocpp.org/files/papers/P2176R0.html">[P2176r0]</a>.
     </p>
+
+
+
+<h3><a name="des.ret">3.3. Naming the return value
+    <span class="link">{des.ret}</span></a></h3>
+
+
+
+<p> A postcondition expresses the effects that a function guarantees when:</p>
+
+<ul>
+   <li>its preconditions are satisfied, and</li>
+   <li>when it returns normally (not via an exception or <code>longjmp</code>).</li>
+</ul>
+
+<p> One of such guarantees is the state of the returned value: </p>
+
+<pre>char get_digit()
+  [[post c: is_digit(c)]];</pre>
+
+<p> <code>[[post</code> <em>Name</em><code>:</code> <em>Pred</em><code>]]</code>
+    is a <em>postcondition</em>: it is another correctness annotation that
+    appears in a function declaration.
+    </p>
+
+<p> In a function declaration the return value (or reference) doesn't have
+    a name, so there is a way to introduce it. The predicate can refer to this
+    name. The type of the return value is usually visible in the declaration,
+    except when we use a return placeholder type and do not provide the
+    definition from which the type could be deduced:</p>
+
+<pre>auto get_digit()
+  [[post c: is_digit(c)]]; <em>// error: decltype(c) unknown</em>
+</pre>
+
+<p> The compiler has to parse the contract annotation in order to detetmine if
+    the expression is well formed. But this task is impossible when we do not
+    know the type of the object. This problem does not occur in a function
+    template declaration, because the task of verifying the validity of the
+    expression is defered untill instantiation time:</p>
+
+<pre>template &lt;int I&gt;
+auto get_digit()
+  [[post c: is_digit(c)]]; <em>// OK</em>
+</pre>
+
+<p> The problem also does not occur when we provide the body of the function
+    from which the type of the return value can be deduced:</p>
+
+<pre>auto get_digit()
+  [[post c: is_digit(c)]] <em>// OK: decltype(c) is char</em>
+{
+  return '0';
+}
+</pre>
+
+<p> This has been discussed in detail in
+    <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1323r2.html">[P1323R2]</a>.
+    </p>
+
+
+
+<h3><a name="des.arg">3.3. Function arguments in postconditions
+    <span class="link">{des.arg}</span></a></h3>
+
+
+<p> A postconditions may describe a relation between the returned value and
+    and function arguments:</p>
+
+<pre>int generate(int lo, int hi)
+  [[pre lo &lt;= hi]]
+  [[post r: lo &lt;= r &amp;&amp; r &lt;= hi]];
+</pre>
+
+<p> The intention of the above declaration seems quite obvious. The function
+    guarantees that:</p>
+
+<ul>
+  <li>The objects the user used to call the function will not be modified.</li>
+  <li>The generated number will fall between the limits that the user passed.</li>
+</ul>
+
+<p> The postcondition needs to have access to the returned value, so it is
+    called after the function has initialized the returend value. In order for
+    the postcondition to check the condition that the caller expects, we have to
+    make sure that the function has not modified the values of function
+    arguments. In order to achieve that we require that non-reference function
+    arguments referenced in the postcondition must be declared const in function
+    definition:</p>
+
+<pre>int generate(int lo, int hi) <em>// error: hi and lo not const</em>
+{
+  return lo;
+}
+
+int generate(const int lo, const int hi) <em>// OK</em>
+{
+  return lo;
+}
+</pre>
+
+<p>This restriction does not apply to references:</p>
+
+<pre>int generate(int&amp; lo, int&amp; hi) <em>// OK</em>
+  [[pre lo &lt;= hi]]
+  [[post r: lo &lt;= r &amp;&amp; r &lt;= hi]]
+{
+  return lo;
+}
+</pre>
+
+<p> Pointers are values, so when they are passed by value, they are subject to
+    the same constraints as other types passed by value.</p>
 
 
 
@@ -632,46 +748,25 @@ of pre-/postconditions, or both, is called in Abort_and_continue mode.</li>
 
 
 
-<h3><a name="rationale.postcond_args">4.3. What does a postcondition annotation see</a></h3>
+<h3><a name="rat.arg">4.3. Why require <code>const</code> for non-reference args?
+    <span class="link">{rat.arg}</span></a></h3>
 
 
-<p> A postcondition is used to describe what the function guarantees
-    (provided that its precondition is satisfied). It is a predicate that tells something:
+<p> As indicated in section <a href="#des.arg">{des.arg}</a>, a non-reference
+    function parameter referenced in a postcondition must be declared
+    <code>const</code> in function definition. This is to prevent any
+    modification of the parameter.
     </p>
 
-<ol>
-    <li>About the return value.</li>
-    <li>About the objects that the function accessed: globals, function arguments passed by reference, <code>*this</code>.</li>
-    <li>About the relation of the return value (and modified objects) to function arguments.</li>
-</ol>
+<p> In order to show why this is necessary, consider the following example:</p>
 
-<p> The implementation of a runtime check for the first and the second
-    kind dictates that a postcondition is evaluated upon normal return
-    from a function. ("Normal" == not via exception or <code>longjmp</code>.)
-    This is because only at this point do we know what the return value
-    is and what the state of the modified objects is.
-    </p>
-
-<p> However, for the third kind of postcondition guarantee the situation
-    is different. Consider the following example.</p>
-
-<pre>int generate(int lo, int hi)
+<pre><em>// declaration that the user sees:</em>
+int generate(int lo, int hi)
   [[pre lo &lt;= hi]]
   [[post r: lo &lt;= r &amp;&amp; r &lt;= hi]];
-</pre>
 
-<p> The intention seems quite obvious. The function guarantees that:</p>
-
-<ul>
-  <li>The objects the user used to call the function will not be modified.</li>
-  <li>The generated number will fall between the limits that the user passed.</li>
-</ul>
-
-<p>However, consider the following possible implementation of function
-    <code>generate</code> that modifies its function arguments:
-    </p>
-
-<pre>int generate(int lo, int hi)
+<em>// definition that only the author sees:</em>
+int generate(int lo, int hi)
 {
   int result = lo;
   while (++lo &lt;= hi) <em>// note: lo modified</em>
@@ -680,7 +775,8 @@ of pre-/postconditions, or both, is called in Abort_and_continue mode.</li>
       ++result;      <em>// incremented slower than lo</em>
   }
   return result;
-}</pre>
+}
+</pre>
 
 <p> Because <code>lo</code> is modified as the function is executed, we get an ambiguous situation where:
     </p>
@@ -690,40 +786,37 @@ of pre-/postconditions, or both, is called in Abort_and_continue mode.</li>
     <li>but it might be smaller than the value of <code>lo</code> as observed upon the exit from the function.</li>
 </ul>
 
-<p> Thus, in order to satisfy the obvious intention of the function
-    author in this use case, we cannot just say that the postcondition
-    observes the state of objects upon (normal) exit from the function.
-    </p>
+<p> We could just followed the rule: postcondition is evaluated at the end of
+    the function, and whatever values function arguments have at that point,
+    we read them. This would make the model for poscondisions "simple", but
+    it would give the semantic meaning to the postcondition that is clearly
+    against the intent of the contract:</p>
 
-<p> The same confusion does not occur when we pass arguments by lvalue reference:</p>
-
-<pre>int generate(int&amp; lo, int&amp; hi)
+<pre>
+int generate(int lo, int hi)
   [[pre lo &lt;= hi]]
   [[post r: lo &lt;= r &amp;&amp; r &lt;= hi]];
-
-<em>// lo and hi are likely to be modified during the call</em>
 </pre>
 
-<p> It also does not occur for arguments of type lvalue reference to const:</p>
+<p> The consumers of the contract only see the declararion. And the declaration
+    clearly states:</p>
 
-<pre>int generate(const int&amp; lo, const int&amp; hi)
-  [[pre lo &lt;= hi]]
-  [[post r: lo &lt;= r &amp;&amp; r &lt;= hi]];
+<ul>
+  <li>The objects you passed to my functions will not be modified (because I
+      will make copies).</li>
+  <li>The generated number will fall between the limits that you passed
+      (not between the values that I created during the course of function
+      execution).</li>
+</ul>
 
-<em>// lo and hi will not be modified in the function through these references</em>
-</pre>
+<p> This is how humans will read this declaration; and this is how the tools
+    (like static analyzers) will read this declaration. So, in order for both
+    tools and the C++ runtime checks to have the same meaning, we have to
+    exclude some otherwise valid implementations of the function. The easiest
+    way is to require that these parameters be visibly <code>const</code>.
 
-<p>This only leaves one suspicious case, of rvalue reference function arguments:</p>
-
-<pre>template &lt;typename T&gt;
-T generate(T&amp;&amp; lo, T&amp;&amp; hi)
-  [[pre lo &lt;= hi]]
-  [[post r: lo &lt;= r &amp;&amp; r &lt;= hi]];
-
-<em>// lo or hi will likely be moved from</em>
-</pre>
-
-<p>Another similar example related to modifying by value arguments referenced in postconditions:</p>
+<p> A similar problem, albeit more difficult to spot, is when the function
+    argument is implicitly moved from:</p>
 
 <pre><em>// declaration:</em>
 
@@ -732,124 +825,108 @@ string forward(string str)
 
 <em>// definition:</em>
 
-string forward(string str)
+string forward(string str) <em>// disallowed in our proposal</em>
 {
   <em>// ...</em>
   return str; <em>// implicit move</em>
 }             <em>// postcondition reads the moved-from state</em>
 </pre>
 
-<p> The same situation occurs for lvalue reference arguments,
-    when a user calls <code>std::move()</code> or performs casts to rvalue reference:
-    </p>
+<p> If we don't require the argument to be <code>const</code> we end up with the
+    postcondition reading the moved-from state. A programmer may not be even aware
+    that a move is taking place. Adding <code>const</code> prevents
+    the move.</p>
 
-<pre>string forward(string&amp; str)
+<p> Why do we require it only for non-reference arguments?</p>
+
+<p> First, there is no
+    way to rewuire it for reference arguments: they cannot be <code>const</code>.
+    Second, there is no need to. Reference function arguments clearly indicate
+    in the declaration that we are interested in modifying the objects that the
+    caller sees. In fact this may be the desire of the caller to have the
+    called function modify these objects, and this can even be reflected in the
+    postcondition:<p>
+
+<pre>void fix_limits(int&amp; lo, int&amp; hi)
+  [[post: lo &lt;= hi]];
+</pre>
+
+<p> Is this measure enough? What about pointers? Even if they are const,
+    the value they point ot can be mutated.</p>
+
+<p> The answer is the same as for the references: you can clearly see from the
+    declaration that the function is allowed access to objects from your scope,
+    so you are prepared and maybe expect them to change:</p>
+
+<pre>void fix_limits(int* lo, int* hi)
+  [[post: *lo &lt;= *hi]];
+</pre>
+
+<p> It has to be kept in mind that pointers, including smart pointers, are
+    value-semantic tyepes: their value is the address: not the value they point
+    to.</p>
+
+<p> The protective measure with adding <code>const</code> does not work for
+    types that violate value semantics:</p>
+
+<pre>
+class Book
 {
-  <em>// ...</em>
-  return std::move(str);
-}</pre>
+  shared_ptr&lt;string&gt; _title = make_shared&lt;string&gt;(); <em>// poor choice</em>
 
-<p> But using casts or <code>std::move()</code> is asking for trouble anyway.
+public:
+  string const& title() const { return *_title; }
+  void set_title(string t) { *_title = std::move(t); }
+  friend auto operator &lt;=&gt;(Book const&amp;, Book const&amp;) = default;
+};
+</pre>
+
+<p> When we copy objects of this type, the copy is tied to the original,
+    so when we modify the copy, this automatically modifies the original.
+    We believe, it is a fair compromise to not take care about types like this.
     </p>
 
-<p> We can respond in a number of ways to this problem:</p>
+<p> The downside of the solution with adding <code>const</code> is that
+    when you add a postcondition to a function declaration, it can cause
+    the definition of the function to be come ill-formed. Adding <code>const</code>
+    may not suffice, because the implementation might be modifying function
+    parameters.</p>
 
-<ol>
-    <li>Ignore it. Users would have to live with this gotcha.</li>
+<p> There are some compinations of types and functions for which an alternative
+    implementation may not exist if we make function parameters <code>const</code>.
+    Consider the following example by Ville Voutilainen:</p>
 
-    <li>Make it undefined behavior when such function argument
-        is actually modified. This is what C++20 contracts did.
-        This is no better in terms of user experience, but allows
-        us to introduce a slightly better semantics in the future,
-        such as silently making copies (potentially expensive) of
-        arguments referenced in postconditions.
-        </li>
+<pre>struct X { int v = 0; };
 
-    <li>Make it ill-formed when a postcondition refers to the by-value
-        function argument and the definition (as opposed to declaration)
-        of this function does not declare this argument as const:
-
-<pre>int generate1(int lo, int hi)
-  [[pre lo &lt;= hi]]
-  [[post r: lo &lt;= r &amp;&amp; r &lt;= hi]];
-
-int generate2(int lo, int hi)
-  [[pre lo &lt;= hi]]
-  [[post r: lo &lt;= r &amp;&amp; r &lt;= hi]];
-
-int generate1(int lo, int hi) <em>// ERROR: hi and lo are not const</em>
-  { <em>/*...*/</em> }
-
-int generate2(const int lo, const int hi) <em>// OK</em>
-  { <em>/*...*/</em> }</pre>
-
-       <p>Because it is very common for builtin types to be passed by value,
-        it will require of the programmers to put a lot of <code>const</code>
-        in their functions.</p>
-
-        </li>
-        <li>Make such function arguments implicitly <code>const</code> in function definition:
-
-<pre>int generate(int lo, int hi)
-  [[pre lo &lt;= hi]]
-  [[post r: lo &lt;= r &amp;&amp; r &lt;= hi]];
-
-int generate(int lo, int hi) <em>// hi and lo have type const int</em>
+void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
+  <em>// [[post: x->v == 42]]</em>
 {
-  int result = lo;
-  while (++lo &lt;= hi) <em>// ill-formed: modifying const object</em>
-  {
-    if (further())
-      ++result;
-  }
-  return result;
-}</pre>
+  x->v = 42;
+}
+</pre>
 
+<p> For such cases, programmers will not be able to declare a postcondition.</p>
 
-     </li>
-
-</ol>
-
-
-<p> This last solution addresses the initial problem and is not intrusive,
-    but creates the situation where we have an immutable object,
-    but we see no const, which can have surprising effects:
+<p> Other options for solving non-reference arguments in postconditions have
+    been considered. C++20 allowed them, but called it undefined behavior if
+    such parameter was modified during the evaluation of the function. This
+    included the situaiton where the parameter was implicitly moved from.
     </p>
 
-<ul>
-    <li>Adding a postcondition to a function declaration can break the function definition.
-        </li>
-    <li>Name lookup can suddenly select different overloads (in case a <code>const</code> and
-        non-<code>const</code> overloads do two different things). However, it should be noted
-        that substituting assertions for pre-/postconditions does not change the overload
-        resolution:
+<p> That solution encouraged too many silent bugs. The present solution looks
+    superior. First, potential bugs are detected at compile time. Second,
+    we leave more doors open for the future. An illegal declaration can be
+    turned into a legal declaration with undefined behavior. The reverse
+    is not possible.</p>
 
-<pre>T f(T x)            <em>// x implicitly const</em>
-  [[pre: p(x)]]
-  [[post r: p(r)]]
-{
-  [[assert: p(x)]]; <em>// selects same p() as in the precondition</em>
-  T r = <em>/*...*/</em>;
-  [[assert: p(r)]]; <em>// selects same p() as in the postcondition</em>
-  return r;
-}</pre>
-
-        </li>
-</ul>
-
-<p> We do not find option #2 satisfactory. While it leaves the door open
-    for some future fix, this fix doesn't solve the problem in a satisfactory
-    way either. Option #2 also closes the door for other fixes, such as #3 and #4 above.
-    </p>
-
-<p> It should also be noted that choosing option #3 leaves the door
-    open for adapting option #4 in the future.
-    </p>
-
-<p> We propose option #3 for non-reference function arguments,
-    and option #1 rvalue reference function arguments. We believe
-    that rvalue reference parameters clearly indicate in the declarations
-    tht modifications to the value will happen before the postcondiion is evaluated.
+<p> Another option would be to, rather than requiring the programmer to manually
+    type <code>const</code> on function arguments, make these arguments implicitly
+    const. This spares some typing, but has downsides. It is not as future proof
+    as the proposed solution: the syntax is well formed with well defined semantics,
+    so we cannot change it in the future. Second, this alternative can cause
+    confusion. When an argument is changed implicitly to <code>const</code>,
+    overload resolution starts selecting different overloads, and the programmer
+    cannot easily figure out why, as there is no <code>const</code> in sight.
     </p>
 
 
@@ -1113,7 +1190,8 @@ public:
 
 
 
-<h3><a name="rationale.security">4.13. Unimplementable security restrictions</a></h3>
+<h3><a name="rat.sec">4.13. Unimplementable security restrictions
+    <span class="link">{rat.sec}</span></a></h3>
 
 
 <p> C++20 had wording "There should be no programmatic way of setting, modifying,
@@ -1217,37 +1295,9 @@ public:
     However, this is not in scope of the Minimum Viable Product.</p>
 
 
-<h3><a name="rationale.post_auto">4.18. Postconditions vs and placeholder return type</a></h3>
 
-
-<p> There is one case where we disallow naming the return value in the postcondition annotation: for non-definition declarations of
-    non-templated functions with placeholder return type:</p>
-
-<pre>auto f(int i)
-  [[post r: r &gt;= 0]]; <em>// error: illegal introduction of name `r`</em>
-
-auto f(int i)
-  [[post r: r &gt;= 0]]  <em>// ok: this is definition</em>
-{
-  return std::abs(i);
-}
-
-auto f(auto i)
-  [[post r: r &gt;= 0]];  <em>// ok: this is a template</em>
-</pre>
-
-<p> This is because such case is unimplementable: we have to validate the
-    expression in the postcondition, but we do not know the type of the returned value.</p>
-
-<p> The detailed description of the problem with alternate solutions
-    — rejected by EWG — has been provided in
-    <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1323r2.html">[P1323R2]</a>.
-    </p>
-
-
-
-<h3><a name="rat.opt">4.19 Contract-based optimizations
-    <span class="link">{rat.opt}</span></a></h3>
+<h3><a name="rat.cbo">4.18 Contract-based optimizations
+    <span class="link">{rat.cbo}</span></a></h3>
 
 
 <p> This proposal does not allow code transformations based on assumption that
@@ -1276,7 +1326,7 @@ auto f(auto i)
 <p> This should not be alarming to people focused on safety, because the above
     scenario requires the usage of <code>__builtin_unreachable()</code>, which
     is easily detectable through simple mechanical checks, and non-conforming.
-    </p>     
+    </p>
 
 
 
@@ -1771,8 +1821,9 @@ in all translation units is conditionally-supported with implementation-defined 
 
 </blockquote>
 
-<p class="editor">C++20 had wording "There should be no programmatic way of setting, modifying,
-  or querying the build level of a translation unit." We omit is as explained in design rationale section.
+<p class="editor">C++20 had wording "There should be no programmatic way of
+    setting, modifying, or querying the build level of a translation unit."
+     We omit is as explained in section <a href="#rat.sec">{rat.sec}</a>.
   </p>
 
 <blockquote class="stdins">
