@@ -31,6 +31,8 @@ p.function    { }
 tab { padding-left: 4em; }
 tab3 { padding-left: 3em; }
 
+.link { float: right }
+
 blockquote.std    { color: #000000; background-color: #F1F1F1;  border: 1px solid #D1D1D1;  padding-left: 0.5em; padding-right: 0.5em; }
 blockquote.stddel { text-decoration: line-through;  color: #000000; background-color: #FFEBFF;  border: 1px solid #ECD7EC;  padding-left: 0.5empadding-right: 0.5em; ; }
 blockquote.stdins { text-decoration: underline;  color: #000000; background-color: #C8FFC8;  border: 1px solid #B3EBB3; padding: 0.5em; }
@@ -121,8 +123,8 @@ Minimum Viable Product, MVP) being able to achieve the following goals:</p>
   <li>Added new design point: incompatible contract annotations in different translation units.</li>
   <li>Added new design point: referencing value and rvalue references function arguments in postconditions.</li>
   <li>Resolved open issue: objects are not treated as const in contract predicates.</li>
-  <li>Resolved open issue: implementations may (but don't have to) 
-runtime-check contract annotations in core constant expressions even in 
+  <li>Resolved open issue: implementations may (but don't have to)
+runtime-check contract annotations in core constant expressions even in
 Ignore mode.</li>
   <li>Added an open issue: alternate postcondition syntax.</li>
   <li>Expanded the design details and rationale section, based on feedback from SG21.</li>
@@ -234,7 +236,7 @@ int main() {
 <p> The above program translated in <em>Check_and_abort</em> mode is allowed to output "eval" 4, 3, 2, 1 or 0 times.
     Of course, the program is still aborted if the value produced by <code>produce()</code>
     is less than or equal to 0.</p>
-    
+
 <p> Looking at the source code with contract annotations alone — that is, not looking at compiler switches —
     the programmer has no guarantee if predicates in contract annotation will be runtime-evaluated or not, or
     if the program is stopped after such evaluation. Whether the side effects of predicates are evaluated
@@ -310,10 +312,143 @@ int main() {
     that it is missing features.</p>
 
 
-<h2><a name="rationale">3. Design details and rationale</a></h2>
+<h2><a name="des">3. Design details <span class="link">{des}</span></a></h2>
 
 
-<h3><a name="rationale.non_attribute">3.1. Why not use attributes</a></h3>
+<h3><a name="des.gol">3.1. Design goals <span class="link">{des.gol}</span></a></h3>
+
+
+<p> We want to provide a uniform notation, usable in different contexts &mdash;
+    in this proposal these contects are funciton declarations and function
+    bodies &mdash; for expressing runtime conditions that necessarily constitute
+    a bug in the program. Such information can be consumed in a number of ways, by many different
+    tools, most of which are outside of the scope of the C++ Standard; we
+    want all the tools to consume the same notation. </p>
+
+<p> We want the proposal &mdash; the number of features, the amout of wording
+    changes &mdash; to be as small as possible, and remain as open for future
+    extensions as possible. The goal is to deliver a small piece fast.
+    We demonstarte whow additional &mdash; often requested &mdash; features
+    can be added on top of this proposal while preservind backwards compatibility.
+  </p>
+
+<p> We want the proposal to be zero-overhead: programmers should be able to
+    add contract annotations and compile the program in a mode that doesn't add
+    a single instruction to the compiled program.</p>
+
+<p> We want other programmers to get the guarantee that the program never continues
+    once it has been determined, through the correctness annotations, that it
+    has a bug. This goal seems somewhat contradictory with the previous one,
+    but we manage to combine them through the introducion of <em>translation
+    modes</em>. This means that a correctness annotation can have different
+    effects on the compiled program, depending on what translation mode it was
+    compiled with.
+
+
+
+<h3><a name="des.pre">3.2. Predicates <span class="link">{des.pre}</span></a></h3>
+
+
+
+<p> This proposal comes with a small tool that is able to consume the
+    correctness annotations. This is the ability to perform a runtime
+    check if the check concludes that we have a bug, to stop the program.</p>
+
+<pre>int fun(int i)
+{
+  [[assert: i != 0]]; <em>// correctness annotation</em>
+  return i;
+}
+
+int main()
+{
+  fun(0);
+  std::cout << "hello\n";
+}</pre>
+
+<p> This program can have two different outcomes, depending on whether we enable
+    the generation of runtime-checks. If we don't, the program will output "hello"
+    and retuen value 0. If we do, this program will immediately call
+    <code>std::abort()</code>.
+
+<p> <code>[[assert:</code> <em>Pred</em><code>]]</code> is a correctness annotaiotn:
+    one that appears inside function body, as a statement. <em>Pred</em> names a
+    predicate. If the predicate returns <code>false</code> it means we have a bug.
+    If it returns <code>true</code>, we do not know if we have any bug or not.</p>
+
+<p> In order for such runtime test to work, <em>Pred</em> has to be a valid C++
+    expression convertible to <code>bool</code>. However, it differs slightly
+    from just any other expression.
+    </p>
+
+<p> Another consumer of contract annotations is a static analyzer that is able
+    to perform a symbolic evaluation of the program and determine if any control
+    path leads to a bug. (Correctness annotations provide a formal definition of
+    a bug.)
+    </p>
+
+<pre>int get_count();
+
+int fun(int i)
+  [[pre: i &gt; 0]] <em>// correctness annotation</em>
+{
+  return i - 1;
+}
+
+int main()
+{
+  int count = get_count();
+
+  if (i &lt; 0)
+    return fun(-i);
+  else
+    return fun(i);
+}</pre>
+
+<p> <code>[[pre:</code> <em>Pred</em><code>]]</code> is <em>precondition</em>:
+    it is another correctness annotation: one that appears in a function
+    declaration. It says that whenever this function is called &mdash;
+    just after the function arguments have been initialized &mdash; the
+    predicate must <em>hold</em>, otherwise we have a bug.</p>
+
+<p> The static analyzer could determine that if funciton <code>get_count()</code>
+    returns 0, then function <code>fun()</code> is called such that the predicate
+    in the precondition does not hold.</p>
+
+<p> Term "to hold" implies having a predicate in the mathematical sense:
+    one that returns a true-false answer and has no effect on the environment:
+    because in mathematics there is no such things as "environment". But
+    in an imperative language like C++, expressions have <em>side effects</em>.
+    The expression in the precondition above doesnt have side effects, so the
+    meaning is clear, but a static analyzer would have a hard time (and we also)
+    if the precondition on the function read:
+    </p>
+
+<pre>int fun(int i)
+  [[pre: --i &gt;= 0]]
+{
+  return i;
+}</pre>
+
+<p> Therefore, while the predicates in contract annotations are C++ expressions,
+    we take some measures to address the situations where these expressions have
+    side effects. Thus, they are not 100% C++ expressions.</p>
+
+<p> Our choice of notation accounts for the fact that we have to address these
+    two, quite different, use cases.</p>
+
+<p> Features added in the future may further increase the difference between
+    predicates in contract annotations and normal C++ expressions. One such
+    extension would be a notation for inexpressible conditions as discussed in
+    <a href="https://isocpp.org/files/papers/P2176R0.html">[P2176r0]</a>.
+    </p>
+
+
+
+<h2><a name="rationale">4. Design rationale <span class="link">{rat}</span></a></h2>
+
+
+<h3><a name="rationale.non_attribute">4.1. Why not use attributes</a></h3>
 
 <p> An alternative syntax for contract annotations would be to use attributes:</p>
 
@@ -337,18 +472,18 @@ int f(int i)
 <p> Here, the <code>assert</code> is interpreted as C macro and expanded, causing a compiler error.
     This problem is not present when identifier <code>assert</code> is followed by a colon.</p>
 
-<p> This problem would disappear if we used some other name than <code>assert</code>. However, 
+<p> This problem would disappear if we used some other name than <code>assert</code>. However,
     name <code>assert</code> is a well established name, not only in C++, and abandoning it
     would make the learning curve unnecessarily steeper.
     </p>
 
 
 
-<h3><a name="rationale.tu_incompat">3.2. Incompatible contract annotation across translation units</a></h3>
+<h3><a name="rationale.tu_incompat">4.2. Incompatible contract annotation across translation units</a></h3>
 
 
 <p> Because we do not require contract annotations to be repeated on subsequent function declarations,
-    it is possible that two translation units can see different sets of contract annotations for the 
+    it is possible that two translation units can see different sets of contract annotations for the
     same function:
     </p>
 
@@ -380,11 +515,11 @@ int main()
     to the caller or the called function, obtains a new dimension. A similar
     issue occurs for default function arguments. Ideally, from the user perspective,
     we would like the above situation to be an error diagnosable by the implementations.
-    However, because this cannot be diagnosed from a single translation unit, 
+    However, because this cannot be diagnosed from a single translation unit,
     it may be too burdensome to require of the implementations to diagnose it.
     </p>
 
-<p> This looks similar to ODR violation. The consequences in the run-time behavior 
+<p> This looks similar to ODR violation. The consequences in the run-time behavior
     in <em>Check_and_abort</em> mode are that the wrong set of contract annotations
     gets executed or that both sets are executed, if the implementation decides to
     test the pre-/postconditions both inside and outside the function.
@@ -400,7 +535,7 @@ int main()
 <ol>
     <li>If such incompatible declarations occur in the program, it is ill-formed, no diagnostic required (IF-NDR).</li>
     <li>It is ok to have such incompatible declarations as long as the function is not called. If it is, the behavior is undefined (UB).</li>
-    <li>Allow calling such function, but make it unspecified which set 
+    <li>Allow calling such function, but make it unspecified which set
 of pre-/postconditions, or both, is called in Abort_and_continue mode.</li>
 </ol>
 
@@ -411,7 +546,7 @@ of pre-/postconditions, or both, is called in Abort_and_continue mode.</li>
     </p>
 
 <p> While option 3 opens no new undefined behavior (either UB or IF-NDR),
-    it would make the runtime checks behave in an incompatible way with 
+    it would make the runtime checks behave in an incompatible way with
     static analysis. We have to know what set of contract annotations
     a function has. The answer cannot be "it depends on which file you
     are compiling".
@@ -425,10 +560,10 @@ of pre-/postconditions, or both, is called in Abort_and_continue mode.</li>
 
 
 
-<h3><a name="rationale.postcond_args">3.3. What does a postcondition annotation see</a></h3>
+<h3><a name="rationale.postcond_args">4.3. What does a postcondition annotation see</a></h3>
 
 
-<p> A postcondition is used to describe what the function guarantees 
+<p> A postcondition is used to describe what the function guarantees
     (provided that its precondition is satisfied). It is a predicate that tells something:
     </p>
 
@@ -438,10 +573,10 @@ of pre-/postconditions, or both, is called in Abort_and_continue mode.</li>
     <li>About the relation of the return value (and modified objects) to function arguments.</li>
 </ol>
 
-<p> The implementation of a runtime check for the first and the second 
+<p> The implementation of a runtime check for the first and the second
     kind dictates that a postcondition is evaluated upon normal return
     from a function. ("Normal" == not via exception or <code>longjmp</code>.)
-    This is because only at this point do we know what the return value 
+    This is because only at this point do we know what the return value
     is and what the state of the modified objects is.
     </p>
 
@@ -456,11 +591,11 @@ of pre-/postconditions, or both, is called in Abort_and_continue mode.</li>
 <p> The intention seems quite obvious. The function guarantees that:</p>
 
 <ul>
-  <li>The objects the user used to call the function will not be modified.</li> 
-  <li>The generated number will fall between the limits that the user passed.</li> 
+  <li>The objects the user used to call the function will not be modified.</li>
+  <li>The generated number will fall between the limits that the user passed.</li>
 </ul>
 
-<p>However, consider the following possible implementation of function 
+<p>However, consider the following possible implementation of function
     <code>generate</code> that modifies its function arguments:
     </p>
 
@@ -483,8 +618,8 @@ of pre-/postconditions, or both, is called in Abort_and_continue mode.</li>
     <li>but it might be smaller than the value of <code>lo</code> as observed upon the exit from the function.</li>
 </ul>
 
-<p> Thus, in order to satisfy the obvious intention of the function 
-    author in this use case, we cannot just say that the postcondition 
+<p> Thus, in order to satisfy the obvious intention of the function
+    author in this use case, we cannot just say that the postcondition
     observes the state of objects upon (normal) exit from the function.
     </p>
 
@@ -551,7 +686,7 @@ string forward(string str)
     <li>Ignore it. Users would have to live with this gotcha.</li>
 
     <li>Make it undefined behavior when such function argument
-        is actually modified. This is what C++20 contracts did. 
+        is actually modified. This is what C++20 contracts did.
         This is no better in terms of user experience, but allows
         us to introduce a slightly better semantics in the future,
         such as silently making copies (potentially expensive) of
@@ -575,11 +710,11 @@ int generate1(int lo, int hi) <em>// ERROR: hi and lo are not const</em>
 
 int generate2(const int lo, const int hi) <em>// OK</em>
   { <em>/*...*/</em> }</pre>
-  
-       <p>Because it is very common for builtin types to be passed by value, 
+
+       <p>Because it is very common for builtin types to be passed by value,
         it will require of the programmers to put a lot of <code>const</code>
         in their functions.</p>
-        
+
         </li>
         <li>Make such function arguments implicitly <code>const</code> in function definition:
 
@@ -605,18 +740,18 @@ int generate(int lo, int hi) <em>// hi and lo have type const int</em>
 
 
 <p> This last solution addresses the initial problem and is not intrusive,
-    but creates the situation where we have an immutable object, 
+    but creates the situation where we have an immutable object,
     but we see no const, which can have surprising effects:
     </p>
 
-<ul>    
+<ul>
     <li>Adding a postcondition to a function declaration can break the function definition.
         </li>
-    <li>Name lookup can suddenly select different overloads (in case a <code>const</code> and 
-        non-<code>const</code> overloads do two different things). However, it should be noted 
-        that substituting assertions for pre-/postconditions does not change the overload 
+    <li>Name lookup can suddenly select different overloads (in case a <code>const</code> and
+        non-<code>const</code> overloads do two different things). However, it should be noted
+        that substituting assertions for pre-/postconditions does not change the overload
         resolution:
-        
+
 <pre>T f(T x)            <em>// x implicitly const</em>
   [[pre: p(x)]]
   [[post r: p(r)]]
@@ -624,14 +759,14 @@ int generate(int lo, int hi) <em>// hi and lo have type const int</em>
   [[assert: p(x)]]; <em>// selects same p() as in the precondition</em>
   T r = <em>/*...*/</em>;
   [[assert: p(r)]]; <em>// selects same p() as in the postcondition</em>
-  return r;        
+  return r;
 }</pre>
-               
+
         </li>
 </ul>
 
-<p> We do not find option #2 satisfactory. While it leaves the door open 
-    for some future fix, this fix doesn't solve the problem in a satisfactory 
+<p> We do not find option #2 satisfactory. While it leaves the door open
+    for some future fix, this fix doesn't solve the problem in a satisfactory
     way either. Option #2 also closes the door for other fixes, such as #3 and #4 above.
     </p>
 
@@ -647,7 +782,7 @@ int generate(int lo, int hi) <em>// hi and lo have type const int</em>
 
 
 
-<h3><a name="rationale.no_continue">3.4. Why disallow continuation (for now)</a></h3>
+<h3><a name="rationale.no_continue">4.4. Why disallow continuation (for now)</a></h3>
 
 
 <p> The behavior of runtime-checking, logging but not aborting has a number of surprising and non-obvious effects.</p>
@@ -680,7 +815,7 @@ int generate(int lo, int hi) <em>// hi and lo have type const int</em>
     concerns: we want to deliver a small but relatively useful feature fast.</p>
 
 
-<h3><a name="rationale.no_throw">3.5. Why disallow throwing on contract violation  (for now)</a></h3>
+<h3><a name="rationale.no_throw">4.5. Why disallow throwing on contract violation  (for now)</a></h3>
 
 <p> We propose to disallow throwing upon detected contract violation because it falls
     outside of one of the presented programming models: the one that says that it is unacceptable to allow
@@ -697,7 +832,7 @@ int generate(int lo, int hi) <em>// hi and lo have type const int</em>
 <p> This makes the proposal smaller, and therefore more likely to progress faster through the WG21 process.</p>
 
 
-<h3><a name="rationale.no_handler">3.6. Why no user-provided violation handler (for now)</a></h3>
+<h3><a name="rationale.no_handler">4.6. Why no user-provided violation handler (for now)</a></h3>
 
 <p> Not proposing the ability to install user-provided violation handlers is again motivated by timing constraints.
     This way we avoid the necessity to specify the interface for the violation handler and its constraints.</p>
@@ -707,7 +842,7 @@ int generate(int lo, int hi) <em>// hi and lo have type const int</em>
 
 
 
-<h3><a name="rationale.side_effects">3.7. Why allow side effects in predicates</a></h3>
+<h3><a name="rationale.side_effects">4.7. Why allow side effects in predicates</a></h3>
 
 
 <p> We intuitively expect that predicates in contract annotations are referentially transparent; that is, they
@@ -745,7 +880,7 @@ int generate(int lo, int hi) <em>// hi and lo have type const int</em>
     explicitly listing what transformations
     the compiler is allowed to perform. Namely, it can remove or
     duplicate all (not some, all of them) side effects associated with evaluating
-    the predicate from a contract annotation. From this it follows that 
+    the predicate from a contract annotation. From this it follows that
     if you know what value would be returned by
     the predicate without evaluating the predicate, you can just use
     this value rather than evaluating the predicate. This means
@@ -760,7 +895,7 @@ int generate(int lo, int hi) <em>// hi and lo have type const int</em>
 
 
 
-<h3><a name="rationale.elision">3.8. Why include side effect elision in the MVP</a></h3>
+<h3><a name="rationale.elision">4.8. Why include side effect elision in the MVP</a></h3>
 
 
 <p> First, it cannot be added later, because then it would be a breaking change. User may start to rely
@@ -772,7 +907,7 @@ int generate(int lo, int hi) <em>// hi and lo have type const int</em>
 
 
 
-<h3><a name="rationale.access">3.9. Why allow access to private and protected members</a></h3>
+<h3><a name="rationale.access">4.9. Why allow access to private and protected members</a></h3>
 
 <p> Programming guidelines often recommend that in contract predicates of public member
     functions one should only use the public interface of the class. This is in case the
@@ -792,7 +927,7 @@ int generate(int lo, int hi) <em>// hi and lo have type const int</em>
     to expose to the users, for instance, because the private implementation may change over time
     or under configuration:
     </p>
-    
+
 <pre>class callback
 {
 #if !defined NDEBUG
@@ -806,39 +941,39 @@ public:
     <em>// real contract: this function can be called no more than 8 times,</em>
     <em>// so the precondition is that the function has been called 7 or less times</em>
 
-#if !defined NDEBUG  
+#if !defined NDEBUG
     <em>// attempt to check the precondition</em>
     [[pre: _call_count &lt;= 7]];
 #endif
-};</pre>  
-  
+};</pre>
+
 <p> In the above example, the precondition can only be checked in debugging mode.
     Once <code>NDEBUG</code> is defined, member <code>_call_count</code> is removed
     and there is no way to test the precondition.
     </p>
-    
-<p> Also, a hypothetical constraint to use only public members in contract predicates 
+
+<p> Also, a hypothetical constraint to use only public members in contract predicates
     could result in programmers turning their private and protected members into public
     members only to be able to express the pre- and postconditions, which does not
     sound like a good class design.
 
-</p><p> This has been described in detail in 
-    <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1289r1.pdf">[P1289R1]</a>, 
+</p><p> This has been described in detail in
+    <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1289r1.pdf">[P1289R1]</a>,
     and in fact adopted by EWG. </p>
 
 
 
-<h3><a name="rationale.no_dafault">3.10. Why not mandate a default translation mode</a></h3>
+<h3><a name="rationale.no_dafault">4.10. Why not mandate a default translation mode</a></h3>
 
 
 <p> We recommend that the default mode is <em>Check_and_abort</em>, but we do not require this of the
     implementations. The reason for that is that we believe that it is not possible to mandate this
     behavior in this International Standard.</p>
-    
-<p> Our ideal is that users get safety by default and performance on request. 
-    ("Safety" in this context is understood as "do not let the program with a bug execute".) 
+
+<p> Our ideal is that users get safety by default and performance on request.
+    ("Safety" in this context is understood as "do not let the program with a bug execute".)
     But what the users often use is an IDE. Even if we were able to require of the compiler
-    that its default mode is <em>Check_and_abort</em>, the IDE can provide its own defaults 
+    that its default mode is <em>Check_and_abort</em>, the IDE can provide its own defaults
     which map on non-default values of compiler switches.
     </p>
 
@@ -848,15 +983,15 @@ public:
 
 
 
-<h3><a name="rationale.no_const">3.11. No gratuitous <code>const</code> qualification</a></h3>
+<h3><a name="rationale.no_const">4.11. No gratuitous <code>const</code> qualification</a></h3>
 
 
 <p> Ideally, we would like contract predicates to be referentially transparent
     (have no side effects, depend on nothing else but the objects directly
     referenced in the expression). This goal is not realistically attainable.
-    We could get closer, however, if we required that all objects referenced 
+    We could get closer, however, if we required that all objects referenced
     in the predicate are treated as if they were <code>const</code>. Thus,
-    only operators and functions (including member functions) that take 
+    only operators and functions (including member functions) that take
     arguments by value or a reference to <code>const</code> are allowed.
     </p>
 
@@ -874,75 +1009,75 @@ public:
     [[pre: x.is_fine()]]    <em>// uses impl 1</em>
   {
     [[asset: x.is_fine()]]; <em>// uses impl 2</em>
-  }  
+  }
 };</pre>
 
 <p> Also, there exist referentially transparent functions that do not
     mark their reference arguments as <code>const</code>. While programmers are
     often advised to mark any functions that do not modify their
-    arguments by contract as <code>const</code>, this is just and device, and does 
-    not have to be followed. And it is not clear if such functions 
+    arguments by contract as <code>const</code>, this is just and device, and does
+    not have to be followed. And it is not clear if such functions
     should be excluded from contract predicates.
     </p>
 
 <p> Because of these issues, and unclear gains, we do not propose
     to treat objects as <code>const</code> inside contract annotations.
     </p>
-    
-    
-    
-<h3><a name="rationale.constexpr">3.12. Interaction with <code>constexpr</code> functions</a></h3>
+
+
+
+<h3><a name="rationale.constexpr">4.12. Interaction with <code>constexpr</code> functions</a></h3>
 
 
 <p> During core constant expression evaluation in <em>Check_and_abort</em>
-    mode when any function precondition, postcondition or 
+    mode when any function precondition, postcondition or
     assertion is violated, the program is ill-formed.
     </p>
 
-<p> Ideally, we would like such evaluation to be ill-formed 
+<p> Ideally, we would like such evaluation to be ill-formed
     even in <em>Ignore</em> mode. However, we are not sure if this is easily
     implementable on all platforms. This proposal allows but not requires this.
     </p>
 
 
 
-<h3><a name="rationale.security">3.13. Unimplementable security restrictions</a></h3>
+<h3><a name="rationale.security">4.13. Unimplementable security restrictions</a></h3>
 
 
-<p> C++20 had wording "There should be no programmatic way of setting, modifying, 
+<p> C++20 had wording "There should be no programmatic way of setting, modifying,
     or querying the build level of a translation unit." Technically,
     we could add a similar requirement for the translation mode.</p>
-    
-<p> We decided to drop this requirement, as there is no way to actually test if it is 
+
+<p> We decided to drop this requirement, as there is no way to actually test if it is
     satisfied, and it is unrealistic to expect that of the implementations. For instance,
     A program can open a configuration file of the project that lists the translation mode.
     Should programs be banned from opening and reading such file?</p>
 
 
 
-<h3><a name="rationale.security">3.14. No placeholder syntax for "meta-annotations" on contract annotations</a></h3>
+<h3><a name="rationale.security">4.14. No placeholder syntax for "meta-annotations" on contract annotations</a></h3>
 
 
 <p> It is clear that at some point there will have to be a way to annotate contract annotations with additional information
     controlling how contract annotations should be interpreted, such as:</p>
-    
+
 <ol>
     <li>That a precondition is a new one, and if it is runtime-checked and fails, it should not trigger a call to <code>std::abort()</code>.</li>
     <li>That a precondition is expensive to evaluate, relative to the cost of function body.</li>
     <li>That the expression in the precondition cannot be odr-used, and therefore evaluated.</li>
 </ol>
 
-<p> We could provide the placeholder syntax for these annotations still in the MVP, 
+<p> We could provide the placeholder syntax for these annotations still in the MVP,
     so that C++ compilers can start parsing it as soon as possible, before we standardize individual "meta-annotations".
     This way, programs written in C++30 would compile in C++23 compilers (assuming this paper is accepted for C++23).</p>
-    
-<p> The serious concern about this idea is that while these meta-annotations will be parsed in C++23, they will have different 
-    semantics than in the future revisions of C++. This silent change of semantics is unacceptable. For this reason, we do not 
+
+<p> The serious concern about this idea is that while these meta-annotations will be parsed in C++23, they will have different
+    semantics than in the future revisions of C++. This silent change of semantics is unacceptable. For this reason, we do not
     propose the placeholder syntax for meta-annotations.</p>
-    
 
 
-<h3><a name="rationale.interleaving">3.15. Interleaving preconditions and postconditions</a></h3>
+
+<h3><a name="rationale.interleaving">4.15. Interleaving preconditions and postconditions</a></h3>
 
 
 <p>This proposal allows to declare preconditions and postconditions in arbitrary order:</p>
@@ -964,7 +1099,7 @@ public:
 <pre>int f(int x)
   [[pre: neat(x)]]
   [[post r: neat(r)]]
-  
+
   [[pre: nice(x)]]
   [[post r: nice(r)]];
 </pre>
@@ -974,33 +1109,33 @@ public:
 
 
 
-<h3><a name="rationale.abort_or_term">3.16. <code>abort()</code> vs <code>terminate()</code></a></h3>
+<h3><a name="rationale.abort_or_term">4.16. <code>abort()</code> vs <code>terminate()</code></a></h3>
 
 <p> In this proposal, throwing from the predicate calls <code>std::terminate()</code> while a failed runtime check
     calls <code>std::abort()</code>. (We simply forbid the implementations
     to end the violation handler by throwing an exception: it is up to implementations how this requirement is satisfied.)
     </p>
-    
-<p> The above distinction reflects the fundamental difference between the two situations. 
+
+<p> The above distinction reflects the fundamental difference between the two situations.
     Throwing from the predicate is a random, unpredictable, but correct situation in the program. Maybe a comparison
-    had to allocate memory, and this allocation failed, because today the server is exceptionally busy. We want to 
+    had to allocate memory, and this allocation failed, because today the server is exceptionally busy. We want to
     handle it the way we usually handle exceptions when there is no suitable handler: <code>std::terminate()</code>
     is an exception handler, with its unique control flow, however harsh.</p>
 
 <p> In contrast, failing a runtime correctness test is an indication of a bug, and it is not clear if <code>std::terminate()</code>,
     which is the second level of exception handling mechanism, is a suitable tool.</p>
-    
-   
 
 
-<h3><a name="rationale.assert_statement">3.17. <code>[[assert:]]</code> is not an expression</a></h3>   
+
+
+<h3><a name="rationale.assert_statement">4.17. <code>[[assert:]]</code> is not an expression</a></h3>
 
 
 <p> In this proposal <code>[[assert:]]</code> can only appertain to a null statement, which effectively makes it a statement,
-    and it cannot be used as an expression. This is a downside compared to macro <code>assert()</code>, which can be used 
+    and it cannot be used as an expression. This is a downside compared to macro <code>assert()</code>, which can be used
     as a subexpression of a bigger expression and therefore be used to protect things like initialization of variables:
     </p>
-    
+
 <pre>MyClass:MyClass(int i)
   : member((assert(i &gt; 0), i))
 {}
@@ -1010,7 +1145,7 @@ public:
     However, this is not in scope of the Minimum Viable Product.</p>
 
 
-<h3><a name="rationale.post_auto">3.18. Postconditions vs and placeholder return type</a></h3> 
+<h3><a name="rationale.post_auto">4.18. Postconditions vs and placeholder return type</a></h3>
 
 
 <p> There is one case where we disallow naming the return value in the postcondition annotation: for non-definition declarations of
@@ -1029,18 +1164,18 @@ auto f(auto i)
   [[post r: r &gt;= 0]];  <em>// ok: this is a template</em>
 </pre>
 
-<p> This is because such case is unimplementable: we have to validate the 
+<p> This is because such case is unimplementable: we have to validate the
     expression in the postcondition, but we do not know the type of the returned value.</p>
-    
+
 <p> The detailed description of the problem with alternate solutions
-    — rejected by EWG — has been provided in 
+    — rejected by EWG — has been provided in
     <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1323r2.html">[P1323R2]</a>.
     </p>
 
 
 
 
-<h2><a name="future">4. Future compatibility</a></h2>
+<h2><a name="future">5. Future compatibility</a></h2>
 
 
 <p> While we propose to drop a number of features from the MVP, this proposal does not close the door for
@@ -1115,30 +1250,30 @@ auto f(auto i)
     </p>
 
 
-<h2><a name="open">5. Open issues</a></h2>
+<h2><a name="open">6. Open issues</a></h2>
 
-<h3><a name="open.post_return">5.1. Syntax for introducing names in postconditions</a></h3>
+<h3><a name="open.post_return">6.1. Syntax for introducing names in postconditions</a></h3>
 
 <p> It has been suggested that postconditions could have a better syntax for introducing the name of the returned value.
     Any such exploration of syntactic space should take into account that postconditions might need to introduce more names.
-    Postconditions should also be able to capture parts of the program state upon function entry, which in practice means 
+    Postconditions should also be able to capture parts of the program state upon function entry, which in practice means
     storing a copies of come objects, in <em>Check_and_abort</em> mode. There are two possible approaches.
     </p>
-    
-<p> One is to use a new keyword (or token) for this purpose, like <code>oldof</code> proposed in 
+
+<p> One is to use a new keyword (or token) for this purpose, like <code>oldof</code> proposed in
     <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2006/n1962.html">[N1962]</a>:
-    
+
 </p><pre>int f(int&amp; i, array&lt;int, 8&gt;&amp; arr)
   [[post r: r &gt;= oldof(i)]]        <em>// value of i upon entry</em>
   [[post r: r &gt;= oldof(arr[7])]];  <em>// value of arr[7] upon entry</em>
-</pre>     
+</pre>
 
 <p>The other option is to introduce new names in a way similar to lambda-captures:</p>
 
 <pre>int f(int&amp; i, array&lt;int, 8&gt;&amp; arr)
   [[post r, old_i = i: r &gt;= old_i]]        <em>// value of i upon entry</em>
   [[post r, old_7 = arr[7]: r &gt;= old_7]];  <em>// value of arr[7] upon entry</em>
-</pre> 
+</pre>
 
 <p>An alternate syntax for postconditions that does not preclude the second option above in the future would be to use parentheses:</p>
 
@@ -1146,13 +1281,13 @@ auto f(auto i)
   [[post(r): r &gt;= 0]]                       <em>// for the MVP</em>
   [[post(r, old_i = i): r &gt;= old_i]]        <em>// future</em>
   [[post(r, old_7 = arr[7]): r &gt;= old_7]];  <em>// future</em>
-</pre> 
+</pre>
 
 
 
 
 
-<h2><a name="wording">6. Wording</a></h2>
+<h2><a name="wording">7. Wording</a></h2>
 
 
 
@@ -1353,18 +1488,18 @@ the converted expression is called the <em>predicate</em> of the correctness ann
 
 <p> 1.
   A <i>contract annotation</i> is a precondition or a postcondition.
-  
+
   A contract annotation may be applied to the function type of a function declaration.
-  
+
   The first declaration of a function <em>D</em> shall specify all contract annotations (if any) of the function.
   Other declarations of the function reachable (10.7) from <em>D</em> shall either specify no contract annotations
   or the same list of contract annotations;
   no diagnostic is required if corresponding conditions will always evaluate to the same value.
-  
+
   If declarations of function <em>F</em> appear in two translation units, the first declarations of <em>F</em>
   in either translation unit their lists of contract annotations shall be the same; no diagnostic required;
-  also no diagnostic is required if corresponding conditions will always evaluate to the same value.  
-  
+  also no diagnostic is required if corresponding conditions will always evaluate to the same value.
+
   If a friend declaration <em>D</em> is the first declaration of the function in a translation unit
   and has a contract annotation, that declaration shall be a definition
   and there shall be no other
@@ -1539,10 +1674,10 @@ in all translation units is conditionally-supported with implementation-defined 
 
 <p> 3.
 
-An <em>ignored correctness annotation test</em> performs no operation. 
+An <em>ignored correctness annotation test</em> performs no operation.
 
 [<i>Note</i>: The predicate is potentially-evaluated (6.3). —<i>end note</i>]
- 
+
 </p>
 
 <p> 4.
@@ -1555,31 +1690,31 @@ that returns to the caller with an alternative predicate
 that returns the same value as <code>P</code> but has no side effects.
 An enforced correctness annotation test where the evaluation of <code>P</code>
  returns <code>false</code> is called <em>unsuccessful</em>.
- 
+
 For an unsuccessful correctness annotation test the <em>contract violation handler</em> is invoked.
-The contract violation handler does not exit via an exception or via a call to <code>longjmp</code> (17.13.3). 
+The contract violation handler does not exit via an exception or via a call to <code>longjmp</code> (17.13.3).
 The semantics of the contract violation handler are implementation defined.
 
 </p>
 
 <p> 5.
 
-<i>Recommended practice</i>: The contract violation handler should by 
-default output to the stream buffer associated with the object 
+<i>Recommended practice</i>: The contract violation handler should by
+default output to the stream buffer associated with the object
 <code>stderr</code>, declared in <code>&lt;cstdio&gt;</code> (29.13.1),
-the message containing the textual representation of the predicate and 
+the message containing the textual representation of the predicate and
 the location in the source code where the predicate was evaluated.
 For preconditions the source location should be
 that where the function containing the corresponding contract annotation
- was called. For postconditions, the source location should be inside 
+ was called. For postconditions, the source location should be inside
 the function definition.
 
 </p>
 
 <p> 6.
 
-[<i>Note</i>: The contract violation handler does not have to be a 
-function with any linkage. An implementation may provide a way to 
+[<i>Note</i>: The contract violation handler does not have to be a
+function with any linkage. An implementation may provide a way to
 customize
 the behavior of the contract violation handler.  — <i>end note</i>]
 
@@ -1589,7 +1724,7 @@ the behavior of the contract violation handler.  — <i>end note</i>]
 <p class="editor">However, an implementation might want to implement it as a global pointer to function, lest when in the future
    the Standard starts to require an installable violation handler, this should cause an ABI breakage.
   </p>
-  
+
 <blockquote class="stdins">
 <p> 7.
 
@@ -1601,8 +1736,8 @@ or static storage duration are executed. Functions passed to <code>atexit()</cod
 <p> 8.
 
 In translation mode <em>enforce</em> all correctness annotation tests are enforced. In translation mode <em>ignore</em>
- during constant evaluation (7.7) it is implementation-defined whether 
-correctness annotation tests are ignored or enforced. In all other 
+ during constant evaluation (7.7) it is implementation-defined whether
+correctness annotation tests are ignored or enforced. In all other
 situations in <em>ignore</em> translation mode all correctness annotation tests are ignored.
 
 </p>
@@ -1616,8 +1751,8 @@ Let <code>POST</code> denote the basic postcondition test sequence of a given fu
 When performing enforced contract annotation tests, it is unspecified if <code>POST</code> is performed one or two times.
 This is called a <em>postcondition test sequence</em>.
 
-[<i>Note</i>: This allows the implementations to test the precondition 
-and postcondition of a function both inside and outside of the function 
+[<i>Note</i>: This allows the implementations to test the precondition
+and postcondition of a function both inside and outside of the function
 body. — <i>end note</i>]
 
 </p>
@@ -1641,7 +1776,7 @@ The goal is to allow the elision even in the situation like this:</p>
 int produce() [[post r: pred(r)]];
 void consume(int i) [[pre: pred(i)]];
 
-consume(produce()); <em>// pred() may be called just once</em> 
+consume(produce()); <em>// pred() may be called just once</em>
 </pre>
 
 
@@ -1720,7 +1855,7 @@ specialization are independent of those of the primary template.— <i>end note<
 
 
 
-<h2><a name="acknowledgments">7. Acknowledgments</a></h2>
+<h2><a name="acknowledgments">8. Acknowledgments</a></h2>
 
 <p>Daveed Vandevoorde offered useful feedback on the syntax of contract annotations.</p>
 
@@ -1732,10 +1867,11 @@ specialization are independent of those of the primary template.— <i>end note<
 
 <p>Jens Maurer reviewed the proposed wording and offered significant improvements.</p>
 
+<p>Ville Voutilainen offered numerous useful suggesions to improve the quality of the paper.</p>
 
 
 
-<h2><a name="literature">8. References</a></h2>
+<h2><a name="literature">9. References</a></h2>
 
 <ul>
 
@@ -1748,7 +1884,7 @@ specialization are independent of those of the primary template.— <i>end note<
       "Contract Programming For C++0x" <br>
       (<a href="http://www.open-std.org/JTC1/SC22/WG21/docs/papers/2005/n1800.pdf">http://www.open-std.org/JTC1/SC22/WG21/docs/papers/2005/n1800.pdf</a>).
       </li>
-      
+
   <li>[N1962] — Lawrence Crowl, Thorsten Ottosen,
       "Proposal to add Contract Programming to C++ (revision 4)" <br>
       (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2006/n1962.html">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2006/n1962.html</a>).
@@ -1777,6 +1913,11 @@ specialization are independent of those of the primary template.— <i>end note<
   <li>[P1494R1] — S. Davis Herring, "Partial program correctness" <br>
       (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1494r1.html">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1494r1.html</a>).
       </li>
+
+  <li>[P2176r0] — Andrzej Krzemieński, "A different take on inexpressible conditions" <br>
+          (<a href="https://isocpp.org/files/papers/P2176R0.html"
+          >https://isocpp.org/files/papers/P2176R0.html</a>).
+          </li>
 
   <li>[P2339R0] — Andrzej Krzemieński, "Contract violation handlers" <br>
       (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2339r0.html">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2339r0.html</a>).
