@@ -132,7 +132,7 @@ Ignore mode.</li>
 
 
 
-<h2><a name="overview">1. Overview</a></h2>
+<h2><a name="ovr">1. Overview <span class="link">{ovr}</span></a></h2>
 
 <p> In this document we use the following terms recommended in
     <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2038r0.html">[P2038R0]</a> and
@@ -242,6 +242,78 @@ int main() {
     if the program is stopped after such evaluation. Whether the side effects of predicates are evaluated
     (one or more times) or not — even in <em>Check_and_abort</em> mode — is unspecified.</p>
 
+
+
+<h3><a name="ovr.can">1.1. What you (don't) get with this proposal <span class="link">{ovr.can}</span></a></h3>
+
+
+<p> This proposal aims to be small. Some important use cases are not covered.
+    </p>
+
+<p> What you can do with this proposal:</p>
+
+<ol>
+  <li>Programmer: The ability to declare parts of your funcitons' contract in the source
+      code in a portable way. This alone adds value: it may help you better
+      understand your function contracts. It may help your users understand
+      your funcions' contracts.</li>
+  <li>Programmer: The ability to run your program locally in mode that checks
+      all your assertions expressed in contract annotations, and aborts the program
+      if any bug is detected. (This experience is similar to using C
+      <code>assert()</code>, except that you can put annotations in more places.)</li>
+  <li>Programmer: The ability to build your program in a mode that adds not a
+      single instruction to your code, even if you put contract annotations.</li>
+  <li>Static analyzer vendor: contract annotations written by your users
+      can help you generate new and better diagnostics.</li>
+</ol>
+
+
+<p> What you cannot do with this proposal:</p>
+
+<ol>
+  <li>Programmer: You may not be able to (depending on the compiler) to
+      runtime-check contract annotations in your code but ignore them in the
+      library you link with. Libraries may need to ship binaries in two versions:
+      with contract checking enabled and disabled. (The Standars Library does
+      not have to introduce contracts.)
+      </li>
+  <li>Programmer: You will not be able to selectively disable the checking of
+      some contracts. If some checks would be too expensive, you would have to
+      leave them out unannotated.
+      </li>
+  <li>Programmer: You will not be able to run the program in test mode, where
+      contract violations are reported but program is allowed to execute further.
+      </li>
+  <li>Library vendor: You will not be able to insert "experimental" contract
+      annotations without the risk of terminating your user's program.
+      </li>
+  <li>Library vendor: You will not be able unit-test your contract annotations
+      by making the program throw from a failed contract test.
+      </li>
+</ol>
+
+<p> We consider these use cases valid and important. Our choice is not to
+    support them in the MVP, but to ultimately enable thir support in the future.
+    Their omission from this paper serves one purpose: enable programmers to
+    declare contract annotations as soon as possible.
+    </p>
+
+
+<h3><a name="ovr.lib">1.2. Linking with third-party libraries
+    <span class="link">{ovr.lib}</span></a></h3>
+
+<p> How does linking with third-party libraries work?
+    </p>
+
+<p> First, a library does not have to declare contract annotations
+    (even the Standard Library). Then the answer is simple.
+    </p>
+
+<p> Libraries that declare contract annotations and ship compiled binaries
+    would have to ship two versions: one with contract checking enabled, the
+    other with contract checking disabled. This also applies to the Standard
+    Library.
+    </p>
 
 
 <h2><a name="motivation">2. Motivation</a></h2>
