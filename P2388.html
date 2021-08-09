@@ -414,7 +414,7 @@ int main() {
 <p> We want other programmers to get the guarantee that the program never continues
     once it has been determined, through the correctness annotations, that it
     has a bug. This goal seems somewhat contradictory with the previous one,
-    but we manage to combine them through the introducion of <em>translation
+    but we manage to combine them through the introduction of <em>translation
     modes</em>. This means that a correctness annotation can have different
     effects on the compiled program, depending on what translation mode it was
     compiled with.
@@ -438,12 +438,12 @@ int main() {
 int main()
 {
   fun(0);
-  std::cout << "hello\n";
+  std::cout &lt;&lt; "hello\n";
 }</pre>
 
 <p> This program can have two different outcomes, depending on whether we enable
     the generation of runtime-checks. If we don't, the program will output "hello"
-    and retuen value 0. If we do, this program will immediately call
+    and return value 0. If we do, this program will immediately call
     <code>std::abort()</code>.
 
 <p> <code>[[assert:</code> <em>Pred</em><code>]]</code> is a correctness annotaiotn:
@@ -579,7 +579,7 @@ auto get_digit()
 
 
 
-<h3><a name="des.arg">3.3. Function arguments in postconditions
+<h3><a name="des.arg">3.4. Function arguments in postconditions
     <span class="link">{des.arg}</span></a></h3>
 
 
@@ -875,7 +875,7 @@ class Book
   shared_ptr&lt;string&gt; _title = make_shared&lt;string&gt;(); <em>// poor choice</em>
 
 public:
-  string const& title() const { return *_title; }
+  string const&amp; title() const { return *_title; }
   void set_title(string t) { *_title = std::move(t); }
   friend auto operator &lt;=&gt;(Book const&amp;, Book const&amp;) = default;
 };
@@ -1330,6 +1330,57 @@ public:
 
 
 
+
+<h3><a name="rat.fut">4.19 Why no future-proof syntax
+    <span class="link">{rat.fut}</span></a></h3>
+    
+    
+<p> The future updates to the contract support framework will surely require
+    a way to annotate correctness specifiers with some meta-information,
+    such as <code>audit</code> for checks deemed expensive, or 
+    <code>axiom</code> for checks considered inexpressible, or 
+    <code>new</code>/<code>review</code> for checks where aborting the
+    program is inapropriate.</p> 
+
+<p> While this is out of scope for the MVP, one could expect that the MVP
+    comes with a syntax that allows for expressing these annotations,
+    but without assigning any semantics with them. 
+    This way a fully-featured contract support framework future revisions
+    of C++ would still compiled in earlier versions of C++, 
+    containing only the MVP, with possibly different semantics.</p> 
+
+<p> We discard this possibility for the following reasosns. First, the design
+    of syntax takes time, whereas we aim at delivering relatively fast.
+    If we don't make it for C++23, the re will be no value added by the 
+    additional future-proof syntax. Second, in order to design a syntax
+    for a feature, you have to design the feature to a certain extent.
+    This, again, works against the design of delivering something small
+    fast. Third, while we can deliver a future-proof syntax, we cannot
+    deliver future-proof semantics. We would end up in the situation,
+    where the same program compiles on older and newer contract support
+    frameworks, but does something else in either of them. Consider the
+    following program, with possible future extensions:   
+    </p>
+
+<pre>
+void f(const char* s)
+  [[pre{axiom}: is_null_terminated(s)]]; <em>// name must not odr-used</em>
+  
+bool binary_search(container&lt;Val&gt;&amp; c, Val const&amp; v)
+  [[pre{audit}: is_sorted(c)]];          <em>// must not be evaluated</em>
+  
+bool foo(int i)
+  [[pre{review}: i &gt;= 0]];               <em>// must not abort</em>
+
+bool bar(int i)
+  [[pre{default}: i &gt;= 0]];              <em>// must evaluate and abort</em>
+</pre>    
+    
+<p> No single semantics that doesn't understand the addiitional syntax 
+    can accomodate these expectations.</p>   
+    
+
+
 <h2><a name="future">5. Future compatibility</a></h2>
 
 
@@ -1537,9 +1588,9 @@ before the destruction of function parameters.</p>
 
 
 
-<p>Add a new section 9.12.4 Correctness attributes [dcl.attr.correct] ([dcl.attr.deprecated] becomes 9.12.5).</p>
+<p>Add a new section 9.12.4 Correctness specifiers [dcl.correct] ([dcl.attr.deprecated] becomes 9.12.5).</p>
 
-<p>Add a new section 9.12.4.1 Syntax [dcl.attr.correct.syn]:</p>
+<p>Add a new section 9.12.4.1 Syntax [dcl.correct.syn]:</p>
 
 <blockquote class="stdins">
 
@@ -1560,11 +1611,11 @@ before the destruction of function parameters.</p>
 
   A <i>correctness-specifier</i> using <tt>pre</tt> is a <i>precondition</i>.
 
-  The attribute may be applied to the function type of a function declaration.
+  The specifier may be applied to the function type of a function declaration.
 
-  [<i>Note</i>: A precondition expresses a predicate.
-  If evaluated upon entry into the function and the result is <code>false</code>, this indicates that
-  the program contains a bug. — <i>end note</i>].
+  [<i>Note</i>: A precondition expresses a predicate, which can be evalueated
+  upon entry into the function. If evaluated and the result is <code>false</code>,
+  this indicates that the program contains a bug. — <i>end note</i>].
   </p>
 
 </blockquote>
@@ -1578,10 +1629,10 @@ before the destruction of function parameters.</p>
 
   A <i>correctness-specifier</i> using <tt>post</tt> is a <i>postcondition</i>.
 
-  The attribute may be applied to the function type of a function declaration.
+  The specifier may be applied to the function type of a function declaration.
 
-  [<i>Note</i>: A postcondition expresses a predicate.
-  If evaluated when the function returns to its caller
+  [<i>Note</i>: A postcondition expresses a predicate which can be evaluated
+  when the function returns to its caller. If evaluated 
   and the result is <code>false</code>, this indicates that the program contains a bug. — <i>end note</i>]
 
   A postcondition may introduce an identifier to represent the glvalue result or the prvalue result object of
@@ -1616,13 +1667,14 @@ auto h(int&amp; p)
 <p> 4.
   A <i>correctness-specifier</i> using <tt>assert</tt> is an <i>assertion</i>.
 
-  The attribute may be applied to a null statement (8.3).
+  The specifier may be applied to a null statement (8.3).
 
+  An assertion correctness test (9.12.4.3) is performed as part of the
+  evaluation of the null statement the assertion applies to.
+  
   [<i>Note</i>: An assertion expresses a predicate.
   If evaluated and the result is <code>false</code>,
   this indicates that the program contains a bug. — <i>end note</i>]
-
-  An assertion correctness test is performed as part of the evaluation of the null statement the assertion applies to.
 </p>
 
 <p>5. Preconditions, postconditions, and assertions are collectively called <em>correctness annotations</em>.
@@ -1636,7 +1688,7 @@ the converted expression is called the <em>predicate</em> of the correctness ann
 
 
 
-<p>Add a new section 9.12.4.2 Contract annotations [dcl.attr.correct.anno]:</p>
+<p>Add a new section 9.12.4.2 Contract annotations [dcl.correct.anno]:</p>
 
 
 <blockquote class="stdins">
@@ -1797,7 +1849,7 @@ int g(int i)        <em>// error: i is not declared const</em>
 
 
 
-<p>Add a new section 9.12.4.3 Testing contract annotations [dcl.attr.correct.test]:</p>
+<p>Add a new section 9.12.4.3 Testing contract annotations [dcl.correct.test]:</p>
 
 
 <blockquote class="stdins">
@@ -1978,7 +2030,7 @@ struct C : A, B {
 <blockquote class="stdins">
 
 <p>
-— an <em>identifier</em> introduced in a postcondition ([dcl.attr.correct])
+— an <em>identifier</em> introduced in a postcondition ([dcl.correct])
 to represent the result of a templated function whose declared return type contains a placeholder type,
 </p>
 
