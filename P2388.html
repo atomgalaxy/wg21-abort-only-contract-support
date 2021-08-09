@@ -1868,19 +1868,25 @@ exception or via <code>longjmp</code> (17.13.3) is not considered returning cont
 note</i>]
 </p>
 
-<p> 6.
 
-If a function has multiple preconditions,
-their tests (if any) will be performed in the order they appear lexically.
+<p> 6.
 
 The <em>basic precondition test sequence</em> of a given function <code>f</code> is the sequence of
 precondition tests corresponding to the list of preconditions of <code>f</code>.
+
+For two precondition annotations <em>P1</em> and <em>P2</em> applied to a function,
+if <em>P1</em> appears lexically before <em>P2</em> then the precondition test corresponding to
+<em>P1</em> is sequenced before the precondition test corresponding to <em>P2</em>. 
 
 If a function has multiple postconditions,
 their tests (if any) will be performed in the order they appear lexically.
 
 The <em>basic postcondition test sequence</em> of a given function is the sequence of
 postcondition tests corresponding to the list of postconditions of the function.
+
+For two postcondition annotations <em>P1</em> and <em>P2</em> applied to a function,
+if <em>P1</em> appears lexically before <em>P2</em> then the postcondition test corresponding to
+<em>P1</em> is sequenced before the postcondition test corresponding to <em>P2</em>. 
 
 [<i>Note</i>: A basic precondition test sequence can be empty if the function has
  not preconditions. — <i>end note</i>]
@@ -1927,6 +1933,21 @@ int g(int i)        <em>// error: i is not declared const</em>
   return i;
 }</pre>
 <p>— <i>end example</i>]</p>
+
+<p> 8.
+
+The postcondition test sequence (9.12.4.3) is
+sequenced after the initialization of the returned value, and
+after the destruction of objects with automatic 
+storage durtion declared in the function body.
+
+The postcondition test sequence is sequenced before 
+the destruction of function arguments.
+
+[<i>Note</i>: Therefore, a postcondition can inspect the state of 
+the return value and function arguments. — <i>end note</i>]</p> 
+
+</p>
 
 </blockquote>
 
@@ -2036,7 +2057,7 @@ situations in <em>ignore</em> translation mode all correctness annotation tests 
 
 <p> 9.
 
-If the evaluation of a correctness annotation modifies the  value of
+If a correctness annotation test modifies the value of
 any object odr-used (6.3) in its predicate, the behavior is undefined.
 
 </p>
@@ -2055,6 +2076,7 @@ and postcondition of a function both inside and outside of the function
 body. — <i>end note</i>]
 
 </p>
+
 
 <p> 11.
 
