@@ -1596,7 +1596,7 @@ before the destruction of function parameters.</p>
 
 <p> 1.
 
-  Correctness attributes are used to specify preconditions, postconditions, and assertions for functions. </p>
+  Correctness specifiers are used to specify preconditions, postconditions, and assertions for functions. </p>
 
   <blockquote class="grammar">
   <p><i>correctness-specifier</i>:</p>
@@ -1950,7 +1950,14 @@ situations in <em>ignore</em> translation mode all correctness annotation tests 
 
 </p>
 
-<p>9.
+<p> 9.
+
+If the evaluation of a correctness annotation modifies the  value of 
+any object odr-used (6.3) in its predicate, the behavior is undefined.
+
+</p>
+
+<p>10.
 Let <code>PRE</code> denote the basic precondition test sequence of a given function <code>f</code>.
 When performing enforced contract annotation tests, it is unspecified if <code>PRE</code> is performed one or two times.
 This is called a <em>precondition test sequence</em>.
@@ -1965,12 +1972,14 @@ body. — <i>end note</i>]
 
 </p>
 
-<p> 10. When the results of functions <code>fs</code> are used to initialize
-    function arguments of a function <code>g</code>, the <em>combined test 
-    sequence</em> is a sequence of postconditions trst sequences of <code>fs</code>
-    followed by a precondition test sequence of <code>g</code>.
+<p> 11.
 
-    [<i>Example</i>:</p>
+When the results of functions <code>fs</code> are used to initialize
+function arguments of a function <code>g</code>, the <em>combined test 
+sequence</em> is a sequence of postconditions trst sequences of <code>fs</code>
+followed by a precondition test sequence of <code>g</code>.
+
+[<i>Example</i>:</p>
 
 <pre>int f1() [[post r: p1(r)]];
 int f2() [[post r: p2(r)]];
@@ -1979,18 +1988,18 @@ void g(int i1, int i2) [[pre: p1(i1)]] [[pre: p2(i2)]];
 g(f1(), f2());
 </pre>
 
-    <p>The combined test sequence of this function call graph is 
-    <code>p1(r)</code>, <code>p2(r)</code>, <code>p1(i1)</code>, <code>p2(i2)</code>. — <i>end example</i>]
+<p>The combined test sequence of this function call graph is 
+<code>p1(r)</code>, <code>p2(r)</code>, <code>p1(i1)</code>, <code>p2(i2)</code>. — <i>end example</i>]
     
-    If two expressions <code>E1</code> and <code>E2</code> appearing 
-    in a combined test sequence are same (9.12.4.2) and <code>E1</code>
-    is sequenced before <code>E2</code> the implementation is allowed 
-    to replace the evaluation of <code>E2</code> with the result of 
-    <code>E1</code>. If such substitution changes the result of 
-    the test containing <code>E1</code> and te test is performed,
-    the behavior is undefined.
+If two expressions <code>E1</code> and <code>E2</code> appearing 
+in a combined test sequence are same (9.12.4.2) and <code>E1</code>
+is sequenced before <code>E2</code> the implementation is allowed 
+to replace the evaluation of <code>E2</code> with the result of 
+<code>E1</code>. If such substitution changes the result of 
+the test containing <code>E1</code> and te test is performed,
+the behavior is undefined.
     
-    [<i>Example</i>:</p>
+[<i>Example</i>:</p>
 
 <pre>int f1() [[post r: p1(r)]];
 int f2() [[post r: p2(r)]];
@@ -1999,9 +2008,9 @@ void g(int i1, int i2) [[pre: pg()]] [[pre: p1(i1) &amp;&amp; p2(i2)]];
 g(f1(), f2());
 </pre>
 
-    <p>The implementation is allowed to skip the evaluation of 
-    <code>p1(i1)</code> and <code>p2(i2)</code> and instead use
-    the values previously returned by <code>p1(r)</code> and <code>p2(r)</code>. — <i>end example</i>]
+<p>The implementation is allowed to skip the evaluation of 
+<code>p1(i1)</code> and <code>p2(i2)</code> and instead use
+the values previously returned by <code>p1(r)</code> and <code>p2(r)</code>. — <i>end example</i>]
     
 [<i>Example</i>:</p>
 
@@ -2012,10 +2021,10 @@ void g(int i1, int i2);
 g(f1(), f2());
 </pre>
 
-    <p>The implementation is not allowed to substitute any 
-    evaluation of <code>q()</code> with the result of the other,
-    because their corresponding tests are indetetminately
-    sequenced. — <i>end example</i>]
+<p>The implementation is not allowed to substitute any 
+evaluation of <code>q()</code> with the result of the other,
+because their corresponding tests are indetetminately
+sequenced. — <i>end example</i>]
     
 </p>
 
