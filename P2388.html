@@ -215,27 +215,10 @@ int select(int i, int j)   <em>// the definition</em>
     <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2036r1.html">[P2036R1]</a>,
     and until it has been solved we see no point in delaying the minimum contract support proposal.</p>
 
-<p> Although it is discouraged, side effects are allowed in the predicates of contract annotations.
-    Instead we allow the provision for the implementations to discard the side effects. This is similar to
-    copy elision from C++03.
-    Even in <em>Check_and_abort</em> mode, the implementation is allowed to discard or duplicate all (as opposed to 'some')
-    side effects of the evaluated predicate, as long as this does not affect the value returned by the expression. Consider:</p><p>
-
-</p><pre>bool is_positive(int i) {
-  std::printf("eval");
-  return i &gt; 0;
-}
-
-int produce() [[post r: is_positive(r)]];
-void consume(int i) [[pre: is_positive(i)]];
-
-int main() {
-  consume(produce());
-}</pre>
-
-<p> The above program translated in <em>Check_and_abort</em> mode is allowed to output "eval" 4, 3, 2, 1 or 0 times.
-    Of course, the program is still aborted if the value produced by <code>produce()</code>
-    is less than or equal to 0.</p>
+<p> Although it is discouraged, side effects are allowed in the
+    predicates of contract annotations. However, we allow
+    implementations both to remove and to duplicate these side effects,
+    so they cannot be relied upon.</p>
 
 <p> Looking at the source code with contract annotations alone — that is, not looking at compiler switches —
     the programmer has no guarantee if predicates in contract annotation will be runtime-evaluated or not, or
@@ -633,10 +616,97 @@ int generate(const int lo, const int hi) <em>// OK</em>
 
 
 
+<h3><a name="des.eff">3.5. Side effects in predicates
+    <span class="link">{des.eff}</span></a></h3>
+
+
+<p> Side effects are allowed in predicates. Some side effects
+    are desired, as described in section <a href="#rat.eff">{rat.eff}</a>,
+    but they have to be "self contained": removing them
+    (or a well defined portin thereof) should not affect the program behavior.
+    </p>
+
+<p> Generally, a compiler is allowed to apply code transformations as if
+    the expressions in contract predicates were side-effect-free. We do not
+    require or expect that the predicates are referencially transparent, because
+    it is often desired to refer from them to global variables, even if they
+    are mutable.</p>
+
+<p> The compiler is allowed to replace any subexpression appearing in a contract
+    annotaion with just the value of this expression. There are two cases where
+    the compiler has enough information to do this:</p>
+
+<ol>
+  <li>When it can peek inside the expressionand observe that in order to 
+      provide the result, it doesn't havd to evauate the entire function
+      body:
+
+<pre>bool is_positive(int i)
+{
+  printf("is_positive() called\n"); <em>// this does not afect the result</em>
+  return i &gt; 0;
+}
+</pre>      
+      </li>
+      
+  <li>When the same expression has already been evaluated duting the
+      same sequence of precondition and postcondition tests:
+      
+<pre>int produce() [[post r: p(r) &amp;&amp; q(r)]];
+void consume(int i) [[pre: p(i)]] [[pre: q(i)]];
+
+consume(produce()); 
+</pre>      
+
+      Here, it is enough to call <code>p()</code> and <code>q()</code>
+      only once, and compiler is allowed to reuse these results rather than
+      calling <code>p()</code> and <code>q()</code> again.      
+      </li>    
+  </ol>
+
+<p> However, for the second case to work, an evaluation of any predicate
+    in the sequence cannot have side effets that woul affect the results
+    of other predicates in the sequence. This cannot be enforced
+    statically, so we call it undefined behavior.</p>
+    
+<p> It is undefined behavior if evaluation of one predicate or
+    subexpression thereof affects the result of any other predicate or a
+    subexpression thereof in the same test sequence. It is also
+    undefined behavior if the evaluation of a predicate modifies the value
+    of function arguments, the returned value, or any other objects
+    odr-used by the predicate. Any other side effects are allowed and
+    valid.</p>
+    
+<pre>void f(int i) [[pre: ++i]]; <em>// UB if evaluated</em>
+</pre>
+
+<p>The compiler is also allowed to call the predicate twice:</p>
+
+<pre>void f(int i) [[pre: p(i)]] [[pre: q(i)]];
+</pre>
+
+<p> When function <code>f()</code> is evaluated, it might cause 
+    the following sequence of precondition tests: <code>p(i)</code>,
+    <code>q(i)</code>, <code>p(i)</code>, <code>q(i)</code>. 
+    This allows the implementations to test the preconditions
+    both inside and outside the function body.</p>
+    
+<p> A possible, hyphotetical but valid, implementation of a 
+    contract annotation check would be to start a transaction,
+    evaluate ath predicate , save the result
+    on the side, cancel the transaction (therewith erasing all
+    side effects since the beginning of the transaction), and
+    just using the stored result instead as a result.</p>     
+
+
+
+
 <h2><a name="rat">4. Design rationale <span class="link">{rat}</span></a></h2>
 
 
-<h3><a name="rationale.non_attribute">4.1. Why not use attributes</a></h3>
+
+<h3><a name="rat.att">4.1. Why not use attributes
+    <span class="link">{rat.att}</span></a></h3>
 
 <p> An alternative syntax for contract annotations would be to use attributes:</p>
 
@@ -863,7 +933,7 @@ string forward(string str) <em>// disallowed in our proposal</em>
 </pre>
 
 <p> It has to be kept in mind that pointers, including smart pointers, are
-    value-semantic tyepes: their value is the address: not the value they point
+    value-semantic types: their value is the address: not the value they point
     to.</p>
 
 <p> The protective measure with adding <code>const</code> does not work for
@@ -991,20 +1061,26 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
 
 
 
-<h3><a name="rationale.side_effects">4.7. Why allow side effects in predicates</a></h3>
+<h3><a name="rat.eff">4.7. Why allow side effects in predicates
+    <span class="link">{rat.eff}</span></a></h3>
 
 
-<p> We intuitively expect that predicates in contract annotations are referentially transparent; that is, they
-    have no side effects and they always return the same value for the same values of input parameters. This expectation
-    is reflected in terms like "if the precondition <em>holds</em>". However, it is impossible to enforce such constraint
-    in an imperative language like C++.
+<p> We intuitively expect that predicates in contract annotations
+    have no side effects. This expectation is reflected in terms
+    like "if the precondition <em>holds</em>". However, it is
+    impossible to enforce such constraint in an imperative
+    language like C++.
     </p>
 
-<p> It is often impossible for programmers to even know if the function they use has any side effects. For instance,
-    the specification of <code>std::vector&lt;T&gt;::size() const</code> does not prevent the implementations from
-    performing side effects, such as logging.</p>
+<p> It is often impossible for programmers to even know if the 
+    function they use has any side effects. For instance,
+    the specification of <code>std::vector&lt;T&gt;::size() const</code>
+    does not prevent the implementations from
+    performing side effects, such as logging.
+    </p>
 
-<p> Some side effects are practical to have, and they do not affect the reasoning about predicates in the mathematical sense.
+<p> Some side effects are practical to have, and they do not
+    affect the reasoning about predicates in the mathematical sense.
     These side effects include:</p>
 
 <ol>
@@ -1025,34 +1101,42 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
     one function is the same as the precondition of another function. It also allowed checking the same predicate twice,
     for instance once inside the function body, and the second time in the calling context.</p>
 
-<p> While we drop this undefined behavior, we allow similar effects, by
-    explicitly listing what transformations
-    the compiler is allowed to perform. Namely, it can remove or
-    duplicate all (not some, all of them) side effects associated with evaluating
-    the predicate from a contract annotation. From this it follows that
-    if you know what value would be returned by
-    the predicate without evaluating the predicate, you can just use
-    this value rather than evaluating the predicate. This means
-    that when the following predicate is used in a contract annotation:</p>
+<p> While we drop this undefined behavior on any 
+    side effects in a contract predicate, we allow
+    similar code transformations, and introduce narrower
+    cases that trigger undefined behavior: in situations where
+    the programmer is clearly doing something nasty.</p>
 
-<pre>bool is_positive(int i) {
-  std::printf("eval");
-  return i &gt; 0;
-}</pre>
+<p> Why not just follow <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0542r5.html">[P0542R5]</a>
+    and say that any side effect inside a predicate is undefined behavior?
+    Because we do not want programs with "benign" sied effects
+    to be panelized, and render additional surprises.
+    Only "malignant" side effects should trigger undefined behavior.
+    We have a pretty good definition of "benign" side effect in a predicate:
+    it does not modify any object that it odr-uses and it doesnot affect
+    the resut of any other subsequent predicate in the same correctness test
+    sequence.    
+    </p>
+    
+<p> Why not just use simpler wording and say that a predicate listed in 
+    a contract annotation can be evaluated an unspecified number of times
+    (including 0 times)? While this would send a clear signal to the users,
+    that the side effects cannot be relied upon, it would not allow the 
+    predicate transformations that we described earlier.
+    </p>    
 
-<p>It can be replaced with just <code>i &gt; 0</code>.</p>
 
 
-
-<h3><a name="rationale.elision">4.8. Why include side effect elision in the MVP</a></h3>
+<h3><a name="rat.eli">4.8. Why include side effect elision in the MVP
+    <span class="link">{rat.eli}</span></a></h3>
 
 
 <p> First, it cannot be added later, because then it would be a breaking change. User may start to rely
     on the mandated side effects in <em>Check_and_abort</em> mode, as per the Hyrum Law, and these would
-    suddenly disappear.</p>
+    suddenly disappear in future releases.</p>
 
 <p> Second, it gives a strong encouragement to the users not to put side effects in their predicates.
-    Their side effects may disappear, even in <em>Check_and_abort</em> mode.</p>
+    Their side effects may disappear, even in <em>Check_and_abort</em> mode; or they can be dulicated.</p>
 
 
 
@@ -1286,7 +1370,7 @@ public:
     as a subexpression of a bigger expression and therefore be used to protect things like initialization of variables:
     </p>
 
-<pre>MyClass:MyClass(int i)
+<pre>MyClass::MyClass(int i)
   : member((assert(i &gt; 0), i))
 {}
 </pre>
@@ -1333,25 +1417,25 @@ public:
 
 <h3><a name="rat.fut">4.19 Why no future-proof syntax
     <span class="link">{rat.fut}</span></a></h3>
-    
-    
+
+
 <p> The future updates to the contract support framework will surely require
     a way to annotate correctness specifiers with some meta-information,
-    such as <code>audit</code> for checks deemed expensive, or 
-    <code>axiom</code> for checks considered inexpressible, or 
+    such as <code>audit</code> for checks deemed expensive, or
+    <code>axiom</code> for checks considered inexpressible, or
     <code>new</code>/<code>review</code> for checks where aborting the
-    program is inapropriate.</p> 
+    program is inapropriate.</p>
 
 <p> While this is out of scope for the MVP, one could expect that the MVP
     comes with a syntax that allows for expressing these annotations,
-    but without assigning any semantics with them. 
+    but without assigning any semantics with them.
     This way a fully-featured contract support framework future revisions
-    of C++ would still compiled in earlier versions of C++, 
-    containing only the MVP, with possibly different semantics.</p> 
+    of C++ would still compiled in earlier versions of C++,
+    containing only the MVP, with possibly different semantics.</p>
 
 <p> We discard this possibility for the following reasosns. First, the design
     of syntax takes time, whereas we aim at delivering relatively fast.
-    If we don't make it for C++23, the re will be no value added by the 
+    If we don't make it for C++23, the re will be no value added by the
     additional future-proof syntax. Second, in order to design a syntax
     for a feature, you have to design the feature to a certain extent.
     This, again, works against the design of delivering something small
@@ -1359,26 +1443,26 @@ public:
     deliver future-proof semantics. We would end up in the situation,
     where the same program compiles on older and newer contract support
     frameworks, but does something else in either of them. Consider the
-    following program, with possible future extensions:   
+    following program, with possible future extensions:
     </p>
 
 <pre>
 void f(const char* s)
   [[pre{axiom}: is_null_terminated(s)]]; <em>// name must not odr-used</em>
-  
+
 bool binary_search(container&lt;Val&gt;&amp; c, Val const&amp; v)
   [[pre{audit}: is_sorted(c)]];          <em>// must not be evaluated</em>
-  
+
 bool foo(int i)
   [[pre{review}: i &gt;= 0]];               <em>// must not abort</em>
 
 bool bar(int i)
   [[pre{default}: i &gt;= 0]];              <em>// must evaluate and abort</em>
-</pre>    
-    
-<p> No single semantics that doesn't understand the addiitional syntax 
-    can accomodate these expectations.</p>   
-    
+</pre>
+
+<p> No single semantics that doesn't understand the additional syntax
+    can accomodate these expectations.</p>
+
 
 
 <h2><a name="future">5. Future compatibility</a></h2>
@@ -1632,7 +1716,7 @@ before the destruction of function parameters.</p>
   The specifier may be applied to the function type of a function declaration.
 
   [<i>Note</i>: A postcondition expresses a predicate which can be evaluated
-  when the function returns to its caller. If evaluated 
+  when the function returns to its caller. If evaluated
   and the result is <code>false</code>, this indicates that the program contains a bug. — <i>end note</i>]
 
   A postcondition may introduce an identifier to represent the glvalue result or the prvalue result object of
@@ -1671,7 +1755,7 @@ auto h(int&amp; p)
 
   An assertion correctness test (9.12.4.3) is performed as part of the
   evaluation of the null statement the assertion applies to.
-  
+
   [<i>Note</i>: An assertion expresses a predicate.
   If evaluated and the result is <code>false</code>,
   this indicates that the program contains a bug. — <i>end note</i>]
@@ -1952,7 +2036,7 @@ situations in <em>ignore</em> translation mode all correctness annotation tests 
 
 <p> 9.
 
-If the evaluation of a correctness annotation modifies the  value of 
+If the evaluation of a correctness annotation modifies the  value of
 any object odr-used (6.3) in its predicate, the behavior is undefined.
 
 </p>
@@ -1975,7 +2059,7 @@ body. — <i>end note</i>]
 <p> 11.
 
 When the results of functions <code>fs</code> are used to initialize
-function arguments of a function <code>g</code>, the <em>combined test 
+function arguments of a function <code>g</code>, the <em>combined test
 sequence</em> is a sequence of postconditions trst sequences of <code>fs</code>
 followed by a precondition test sequence of <code>g</code>.
 
@@ -1988,17 +2072,17 @@ void g(int i1, int i2) [[pre: p1(i1)]] [[pre: p2(i2)]];
 g(f1(), f2());
 </pre>
 
-<p>The combined test sequence of this function call graph is 
+<p>The combined test sequence of this function call graph is
 <code>p1(r)</code>, <code>p2(r)</code>, <code>p1(i1)</code>, <code>p2(i2)</code>. — <i>end example</i>]
-    
-If two expressions <code>E1</code> and <code>E2</code> appearing 
+
+If two expressions <code>E1</code> and <code>E2</code> appearing
 in a combined test sequence are same (9.12.4.2) and <code>E1</code>
-is sequenced before <code>E2</code> the implementation is allowed 
-to replace the evaluation of <code>E2</code> with the result of 
-<code>E1</code>. If such substitution changes the result of 
+is sequenced before <code>E2</code> the implementation is allowed
+to replace the evaluation of <code>E2</code> with the result of
+<code>E1</code>. If such substitution changes the result of
 the test containing <code>E1</code> and te test is performed,
 the behavior is undefined.
-    
+
 [<i>Example</i>:</p>
 
 <pre>int f1() [[post r: p1(r)]];
@@ -2008,10 +2092,10 @@ void g(int i1, int i2) [[pre: pg()]] [[pre: p1(i1) &amp;&amp; p2(i2)]];
 g(f1(), f2());
 </pre>
 
-<p>The implementation is allowed to skip the evaluation of 
+<p>The implementation is allowed to skip the evaluation of
 <code>p1(i1)</code> and <code>p2(i2)</code> and instead use
 the values previously returned by <code>p1(r)</code> and <code>p2(r)</code>. — <i>end example</i>]
-    
+
 [<i>Example</i>:</p>
 
 <pre>int f1() [[post: q()]];
@@ -2021,11 +2105,11 @@ void g(int i1, int i2);
 g(f1(), f2());
 </pre>
 
-<p>The implementation is not allowed to substitute any 
+<p>The implementation is not allowed to substitute any
 evaluation of <code>q()</code> with the result of the other,
 because their corresponding tests are indetetminately
 sequenced. — <i>end example</i>]
-    
+
 </p>
 
 
