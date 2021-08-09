@@ -1965,27 +1965,63 @@ body. — <i>end note</i>]
 
 </p>
 
-<p> 10.
-If the execution of two contract annotation tests <code>T1</code> and <code>T2</code> corresponding to the same contact annotations (9.12.4.2),
-where <code>T1</code> precedes <code>T2</code>,
-is separated only by other contract annotation tests, the implementation is allowed to skip the execution of <code>T2</code>.
+<p> 10. When the results of functions <code>fs</code> are used to initialize
+    function arguments of a function <code>g</code>, the <em>combined test 
+    sequence</em> is a sequence of postconditions trst sequences of <code>fs</code>
+    followed by a precondition test sequence of <code>g</code>.
 
-Given any two contract annotation tests <code>T1</code> and <code>T2</code>, where <code>T1</code> precedes <code>T2</code>,
-either consecutive or separated only by other contract annotations, if substituting the predicate of <code>T1</code> with its side-effect-less equivalent,
-changes <code>T2</code> from being successful to unsuccessful or vice versa, the behavior is undefined when <code>T2</code> is performed.
+    [<i>Example</i>:</p>
+
+<pre>int f1() [[post r: p1(r)]];
+int f2() [[post r: p2(r)]];
+void g(int i1, int i2) [[pre: p1(i1)]] [[pre: p2(i2)]];
+
+g(f1(), f2());
+</pre>
+
+    <p>The combined test sequence of this function call graph is 
+    <code>p1(r)</code>, <code>p2(r)</code>, <code>p1(i1)</code>, <code>p2(i2)</code>. — <i>end example</i>]
+    
+    If two expressions <code>E1</code> and <code>E2</code> appearing 
+    in a combined test sequence are same (9.12.4.2) and <code>E1</code>
+    is sequenced before <code>E2</code> the implementation is allowed 
+    to replace the evaluation of <code>E2</code> with the result of 
+    <code>E1</code>. If such substitution changes the result of 
+    the test containing <code>E1</code> and te test is performed,
+    the behavior is undefined.
+    
+    [<i>Example</i>:</p>
+
+<pre>int f1() [[post r: p1(r)]];
+int f2() [[post r: p2(r)]];
+void g(int i1, int i2) [[pre: pg()]] [[pre: p1(i1) &amp;&amp; p2(i2)]];
+
+g(f1(), f2());
+</pre>
+
+    <p>The implementation is allowed to skip the evaluation of 
+    <code>p1(i1)</code> and <code>p2(i2)</code> and instead use
+    the values previously returned by <code>p1(r)</code> and <code>p2(r)</code>. — <i>end example</i>]
+    
+[<i>Example</i>:</p>
+
+<pre>int f1() [[post: q()]];
+int f2() [[post: q()]];
+void g(int i1, int i2);
+
+g(f1(), f2());
+</pre>
+
+    <p>The implementation is not allowed to substitute any 
+    evaluation of <code>q()</code> with the result of the other,
+    because their corresponding tests are indetetminately
+    sequenced. — <i>end example</i>]
+    
 </p>
+
 
 </blockquote>
 
-<p class="editor">This should allow the implementations to elide the check even if it has side effects affecting subsequent checks.
-The goal is to allow the elision even in the situation like this:</p>
-
-<pre class="editor">
-int produce() [[post r: pred(r)]];
-void consume(int i) [[pre: pred(i)]];
-
-consume(produce()); <em>// pred() may be called just once</em>
-</pre>
 
 
 <p>In 11.7.3 [class.virtual] add a new paragraph after 11.7.3/17:</p>
