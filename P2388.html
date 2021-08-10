@@ -630,6 +630,26 @@ int generate(const int lo, const int hi) <em>// OK</em>
 }
 </pre>
 
+<p> This may have the effect that if the function argument 
+    is returned from the function, the added <code>const</code>
+    will change the implicit move into a copy, which may add an
+    overhead, and may make the program ill-formed, if the type
+    is not copyable. However, this will not happen behind the 
+    programmer's back. the programmer is first informed 
+    (in form of an error message) that the argument has to be
+    declared <code>const</code>. It will be the programmer's
+    decision to make this change. An alternative decision might
+    be to not declare postcondition annotations on functions
+    that cannot be rewritten so that they take their 
+    postcondition-referenced argumentsas <code>const</code>.
+    </p>
+    
+<p> Another way to put this is that postconditions referring
+    to non-reference function arguments make these arguments
+    part of the interface: the function no longer has freedom
+    to useit at will.    
+    </p>
+
 <p>This restriction does not apply to references:</p>
 
 <pre>int generate(int&amp; lo, int&amp; hi) <em>// OK</em>
@@ -725,12 +745,12 @@ consume(produce());
     we can evaluate it outside, and then the error message points at
     the caller, rather than the callee.</p>
     
-<p> A possible, hyphotetical but valid, implementation of a 
+<p> A possible, hypothetical but valid, implementation of a 
     contract annotation check would be to start a transaction,
-    evaluate ath predicate , save the result
+    evaluate the predicate, save the result
     on the side, cancel the transaction (therewith erasing all
     side effects since the beginning of the transaction), and
-    just using the stored result instead as a result.</p>     
+    just using the stored value instead as a result.</p>     
 
 
 
@@ -996,7 +1016,7 @@ public:
     may not suffice, because the implementation might be modifying function
     parameters.</p>
 
-<p> There are some compinations of types and functions for which an alternative
+<p> There are some combinations of types and functions for which an alternative
     implementation may not exist if we make function parameters <code>const</code>.
     Consider the following example by Ville Voutilainen:</p>
 
@@ -1033,7 +1053,16 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
     cannot easily figure out why, as there is no <code>const</code> in sight.
     </p>
 
+<p> Another option: disallow postconditions to reference function arguments.
+    This is possible, but the proposed solution is superior. Referencing
+    non-const non-reference paramete is already an error; we just make it easier
+    for people who can afford to put <code>const</code> in the definition.
+    </p>
 
+<p> Finally, there is an option to remove postconditions from this
+    proposal. This will however make the same problem reappear
+    once we try to add postconditions in the future.
+    </p>
 
 <h3><a name="rat.con">4.4. Why disallow continuation (for now)
     <span class="link">{rat.con}</span></a></h3>
