@@ -113,10 +113,10 @@ Minimum Viable Product, MVP) being able to achieve the following goals:</p>
 
 
 
-<h2><a name="revisions">0. Revision history</a></h2>
+<h2><a name="rev">0. Revision history <span class="link">{rev}</span></a></h2>
 
 
-<h3><a name="revisions.r1">0.1. R0 → R1</a></h3>
+<h3><a name="rev.r01">0.1. R0 → R1<span class="link">{rev.r01}</span></a></h3>
 
 <ol>
   <li>Added the proposed wording.</li>
@@ -1038,7 +1038,7 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
 
 <p>First, in case the precondition is guarding against the Abstract Machine Violation (hard UB),
    reaching the point of the abstract machine violation might result in what would be observed
-   as removing the log entry for the previous contract violation. This is discussed in detail in appendix A.</p>
+   as removing the log entry for the previous contract violation. This is discussed in detail in <a href="#apa">appendix A</a>.</p>
 
 <p> Second, a mechanical transformation of every contract annotation to "check, log and continue"
     can introduce a new Abstract Machine Violation (hard UB)
@@ -1057,14 +1057,15 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
 <p> This program upon <code>p == nullptr</code> behaves in a way that (1) does not cause abstract machine violation and
     (2) guarantees that the business logic, indicated with *, is never reached. This happens for both <em>Ignore</em>
     and <em>Check_and_abort</em> mode. However, in a mode that allows the program to continue, this causes abstract machine violation
-    upon runtime-checking the second precondition. This is explained in detail in appendix A.</p>
+    upon runtime-checking the second precondition. This is explained in detail in <a href="#apa">appendix A</a>.</p>
 
 <p> We believe that "the continuation mode" is a useful feature that is necessary for some essential applications
     (like adding contracts in libraries in stages). Our motivation for omitting it from the MVP is the timing
     concerns: we want to deliver a small but relatively useful feature fast.</p>
 
 
-<h3><a name="rationale.no_throw">4.5. Why disallow throwing on contract violation  (for now)</a></h3>
+<h3><a name="rat.exc">4.5. Why disallow throwing on contract violation  (for now)
+    <span class="link">{rat.exc}</span></a></h3>
 
 <p> We propose to disallow throwing upon detected contract violation because it falls
     outside of one of the presented programming models: the one that says that it is unacceptable to allow
@@ -1081,7 +1082,8 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
 <p> This makes the proposal smaller, and therefore more likely to progress faster through the WG21 process.</p>
 
 
-<h3><a name="rationale.no_handler">4.6. Why no user-provided violation handler (for now)</a></h3>
+<h3><a name="rat.hnd">4.6. Why no user-provided violation handler (for now)</a>
+    <span class="link">{rat.hnd}</span></h3>
 
 <p> Not proposing the ability to install user-provided violation handlers is again motivated by timing constraints.
     This way we avoid the necessity to specify the interface for the violation handler and its constraints.</p>
@@ -1495,11 +1497,17 @@ bool bar(int i)
 
 
 
-<h2><a name="future">5. Future compatibility</a></h2>
+<h2><a name="fut">5. Future compatibility 
+    <span class="link">{fut}</span></a></h2>
 
 
 <p> While we propose to drop a number of features from the MVP, this proposal does not close the door for
-    adding them in the future, once (if) the MVP has been agreed upon and baked.</p>
+    adding them in the future, once (if) the MVP has been agreed upon and baked. </p>
+    
+    
+<p> To guarantee backward compatibility as we add features in the future,
+    all semantics added in the MVP must not change. Therefore all new features will have to be opt-ins:
+    enabled either through new syntax/annotaitons, or through new translation modes.</p>
 
 <p> The ability to install a custom violation handler (along with the handler's interface) can be provided
     as a future extension, with the behavior mandated by the MVP being the semantics of the default
@@ -1570,9 +1578,11 @@ bool bar(int i)
     </p>
 
 
-<h2><a name="open">6. Open issues</a></h2>
+<h2><a name="ope">6. Open issues
+    <span class="link">{ope}</span></a></h2>
 
-<h3><a name="open.post_return">6.1. Syntax for introducing names in postconditions</a></h3>
+<h3><a name="ope.syn">6.1. Syntax for introducing names in postconditions</a>
+    <span class="link">{ope.syn}</span></a></h3>
 
 <p> It has been suggested that postconditions could have a better syntax for introducing the name of the returned value.
     Any such exploration of syntactic space should take into account that postconditions might need to introduce more names.
@@ -1607,7 +1617,7 @@ bool bar(int i)
 
 
 
-<h2><a name="wording">7. Wording</a></h2>
+<h2><a name="wor">7. Wording <span class="link">{wor}</span></a></h2>
 
 
 
@@ -2244,7 +2254,8 @@ specialization are independent of those of the primary template.— <i>end note<
 
 
 
-<h2><a name="acknowledgments">8. Acknowledgments</a></h2>
+<h2><a name="ack">8. Acknowledgments
+    <span class="link">{ack}</span></a></h2>
 
 <p>Daveed Vandevoorde offered useful feedback on the syntax of contract annotations.</p>
 
@@ -2260,7 +2271,8 @@ specialization are independent of those of the primary template.— <i>end note<
 
 
 
-<h2><a name="literature">9. References</a></h2>
+<h2><a name="ref">9. References
+    <span class="link">{ref}</span></a></h2>
 
 <ul>
 
@@ -2360,7 +2372,8 @@ implementation-defined"<br>
 
 
 
-<h2><a name="appendix_a">Appendix A. Open issues with continuing violation handlers</a></h2>
+<h2><a name="apa">Appendix A. Open issues with continuing violation handlers
+    <span class="link">{apa}</span></a></h2>
 
 <p> We are aware of two unintuitive consequences of continuing violation handlers. First,
     in case the precondition is guarding against the abstract machine violation (hard UB),
