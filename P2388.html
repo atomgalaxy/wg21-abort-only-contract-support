@@ -56,7 +56,7 @@ td { text-align: left;  padding-left: 0.4em; border: none;  padding-right: 0.4em
     <th>Document number:&nbsp;&nbsp;</th><th> </th><td>D2388R1</td>
   </tr>
   <tr>
-    <th>Date:&nbsp;&nbsp;</th><th> </th><td>2021-08-04</td>
+    <th>Date:&nbsp;&nbsp;</th><th> </th><td>2021-08-10</td>
   </tr>
   <tr>
     <th>Audience:&nbsp;&nbsp;</th><th> </th><td>SG21</td>
@@ -299,7 +299,7 @@ int select(int i, int j)   <em>// the definition</em>
     </p>
 
 
-<h2><a name="motivation">2. Motivation</a></h2>
+<h2><a name="mot">2. Motivation <span class="link">{mot}</span></a></h2>
 
 <p> The motivation for adding contract support to the language has already been provided multiple times, for example in
     <a href="http://www.open-std.org/JTC1/SC22/WG21/docs/papers/2004/n1613.pdf">[N1613]</a>,
@@ -309,8 +309,10 @@ int select(int i, int j)   <em>// the definition</em>
     <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4135.pdf">[N4135]</a>,
     <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0380r0.pdf">[P0380R0]</a>,
     <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2182r1.html">[P2182R1]</a>.
+    In very short, contract annotations allow the programmers to define what they consider a 
+    bug in their code. This information can be used by tools in a number of ways.</p>    
 
-    The motivation for starting with a minimal set of features has been provided in
+<p> The motivation for starting with a minimal set of features has been provided in
     <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2182r1.html">[P2182R1]</a>.
     In short, the goal is to minimize the risk of having the discussions and disagreements about
     the secondary features of contract support framework impede or prevent the addition of the primary
@@ -326,7 +328,9 @@ int select(int i, int j)   <em>// the definition</em>
     </p>
 
 
-<h3><a name="motivation.two_models">2.1. Two programming models</a></h3>
+<h3><a name="mot.two">2.1. Two programming models
+    <span class="link">{mot.two}</span></a></h3>
+
 
 <p> We have identified that there are at least two views on what a contract violation means.
     They both have supporters among the interested parties.</p>
@@ -367,7 +371,32 @@ int select(int i, int j)   <em>// the definition</em>
     that it is missing features.</p>
 
 
+<h3><a name="mot.too">2.2. Is the proposal not too small?
+    <span class="link">{mot.too}</span></a></h3>
 
+
+<p> It may appear that what is proposed is too small and not 
+    usable in many real-life use cases. In particular, the ability
+    to continue the program execution after a runtime correctness
+    check has failed is brought up in this context.</p>
+    
+<p> In section <a href="#rat.con">{rat.con}</a> we describe, 
+    why we believe that designing the continuation mode so that it
+    avoids introducing surprising new reasons for undefined behavior
+    and gathers consensus, will take a long time, and will 
+    put the C++23 deadline at risk.
+    </p>
+
+<p> We can see two options:</p>
+
+<ol>
+    <li>Deliver a feature-rich solution for C++26, or later or never.</li>
+    <li>Deliver a reduced set of features for C++23; deliver the remaining features for C++26, or later or never.</li>
+    </ol>
+
+<p> The latter option subsumes the former, even if one 
+    disagrees that the reduced feature set is "viable" for one's use cases.
+    </p>
 
 <h2><a name="des">3. Design details <span class="link">{des}</span></a></h2>
 
@@ -1001,7 +1030,8 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
 
 
 
-<h3><a name="rationale.no_continue">4.4. Why disallow continuation (for now)</a></h3>
+<h3><a name="rat.con">4.4. Why disallow continuation (for now)
+    <span class="link">{rat.con}</span></a></h3>
 
 
 <p> The behavior of runtime-checking, logging but not aborting has a number of surprising and non-obvious effects.</p>
