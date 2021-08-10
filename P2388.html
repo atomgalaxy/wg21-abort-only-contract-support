@@ -718,7 +718,12 @@ consume(produce());
     the following sequence of precondition tests: <code>p(i)</code>,
     <code>q(i)</code>, <code>p(i)</code>, <code>q(i)</code>. 
     This allows the implementations to test the preconditions
-    both inside and outside the function body.</p>
+    both inside and outside the function body. This ability is
+    useful for generating good error messages from preconditions:
+    they have to be evaluated inside the function, in case the call
+    is made through a pointer. But when a call is made directly,
+    we can evaluate it outside, and then the error message points at
+    the caller, rather than the callee.</p>
     
 <p> A possible, hyphotetical but valid, implementation of a 
     contract annotation check would be to start a transaction,
