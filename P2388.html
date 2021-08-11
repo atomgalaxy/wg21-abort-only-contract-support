@@ -85,11 +85,11 @@ Minimum Viable Product, MVP) being able to achieve the following goals:</p>
   <li>Be devoid of any controversial design issues; this is to obtain the maximum consensus.</li>
 </ol>
 
-<p>Under this proposal a function containing a precondition annotation:</p>
+<p>Under this proposal a function containing an assertion annotation:</p>
 
 <pre>bool fun(int a, int b)
-  [[pre: are_compatible(a, b)]] <em>// precondition annotation</em>
 {
+  [[assert: are_compatible(a, b)]]; <em>// assertion annotation</em>
   return transform(a, b);
 }</pre>
 
@@ -98,7 +98,7 @@ Minimum Viable Product, MVP) being able to achieve the following goals:</p>
 <pre>bool fun(int a, int b)
 {
   [&amp;]() noexcept {
-    if (are_compatible(a, b) == false) {   <em>// Note: name lookup as in function declarations</em>
+    if (are_compatible(a, b) == false) {
       CONTRACT_VIOLATION_HANDLER("are_compatible(a, b)");
       std::abort();
     }
@@ -1034,7 +1034,7 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
 <p> Other options for solving non-reference arguments in postconditions have
     been considered. C++20 allowed them, but called it undefined behavior if
     such parameter was modified during the evaluation of the function. This
-    included the situaiton where the parameter was implicitly moved from.
+    included the situation where the parameter was implicitly moved from.
     </p>
 
 <p> That solution encouraged too many silent bugs. The present solution looks
