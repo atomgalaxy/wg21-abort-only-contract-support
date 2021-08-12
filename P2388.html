@@ -210,6 +210,9 @@ int select(int i, int j)   <em>// the definition</em>
     protected members are accessible in predicates of preconditions and postconditions of member and befriended functions.
     </p>
 
+<p> Preconditions and postconditions are checked (in <em>Check_and_abort</em> mode)
+    even if the function is called through a pointer.</p>
+
 <p> This proposal does not allow preconditions and postconditions for lambdas. Name lookup is already problematic
     in lambdas in the face of lambda captures. This problem is pursued in
     <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2036r1.html">[P2036R1]</a>,
@@ -309,8 +312,8 @@ int select(int i, int j)   <em>// the definition</em>
     <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4135.pdf">[N4135]</a>,
     <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0380r0.pdf">[P0380R0]</a>,
     <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2182r1.html">[P2182R1]</a>.
-    In very short, contract annotations allow the programmers to define what they consider a 
-    bug in their code. This information can be used by tools in a number of ways.</p>    
+    In very short, contract annotations allow the programmers to define what they consider a
+    bug in their code. This information can be used by tools in a number of ways.</p>
 
 <p> The motivation for starting with a minimal set of features has been provided in
     <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2182r1.html">[P2182R1]</a>.
@@ -375,15 +378,15 @@ int select(int i, int j)   <em>// the definition</em>
     <span class="link">{mot.too}</span></a></h3>
 
 
-<p> It may appear that what is proposed is too small and not 
+<p> It may appear that what is proposed is too small and not
     usable in many real-life use cases. In particular, the ability
     to continue the program execution after a runtime correctness
     check has failed is brought up in this context.</p>
-    
-<p> In section <a href="#rat.con">{rat.con}</a> we describe, 
+
+<p> In section <a href="#rat.con">{rat.con}</a> we describe,
     why we believe that designing the continuation mode so that it
     avoids introducing surprising new reasons for undefined behavior
-    and gathers consensus, will take a long time, and will 
+    and gathers consensus, will take a long time, and will
     put the C++23 deadline at risk.
     </p>
 
@@ -394,7 +397,7 @@ int select(int i, int j)   <em>// the definition</em>
     <li>Deliver a reduced set of features for C++23; deliver the remaining features for C++26, or later or never.</li>
     </ol>
 
-<p> The latter option subsumes the former, even if one 
+<p> The latter option subsumes the former, even if one
     disagrees that the reduced feature set is "viable" for one's use cases.
     </p>
 
@@ -630,24 +633,24 @@ int generate(const int lo, const int hi) <em>// OK</em>
 }
 </pre>
 
-<p> This may have the effect that if the function argument 
+<p> This may have the effect that if the function argument
     is returned from the function, the added <code>const</code>
     will change the implicit move into a copy, which may add an
     overhead, and may make the program ill-formed, if the type
-    is not copyable. However, this will not happen behind the 
-    programmer's back. the programmer is first informed 
+    is not copyable. However, this will not happen behind the
+    programmer's back. the programmer is first informed
     (in form of an error message) that the argument has to be
     declared <code>const</code>. It will be the programmer's
     decision to make this change. An alternative decision might
     be to not declare postcondition annotations on functions
-    that cannot be rewritten so that they take their 
+    that cannot be rewritten so that they take their
     postcondition-referenced argumentsas <code>const</code>.
     </p>
-    
+
 <p> Another way to put this is that postconditions referring
     to non-reference function arguments make these arguments
     part of the interface: the function no longer has freedom
-    to useit at will.    
+    to useit at will.
     </p>
 
 <p>This restriction does not apply to references:</p>
@@ -686,7 +689,7 @@ int generate(const int lo, const int hi) <em>// OK</em>
     the compiler has enough information to do this:</p>
 
 <ol>
-  <li>When it can peek inside the expressionand observe that in order to 
+  <li>When it can peek inside the expressionand observe that in order to
       provide the result, it doesn't havd to evauate the entire function
       body:
 
@@ -695,29 +698,29 @@ int generate(const int lo, const int hi) <em>// OK</em>
   printf("is_positive() called\n"); <em>// this does not afect the result</em>
   return i &gt; 0;
 }
-</pre>      
+</pre>
       </li>
-      
+
   <li>When the same expression has already been evaluated duting the
       same sequence of precondition and postcondition tests:
-      
+
 <pre>int produce() [[post r: p(r) &amp;&amp; q(r)]];
 void consume(int i) [[pre: p(i)]] [[pre: q(i)]];
 
-consume(produce()); 
-</pre>      
+consume(produce());
+</pre>
 
       Here, it is enough to call <code>p()</code> and <code>q()</code>
       only once, and compiler is allowed to reuse these results rather than
-      calling <code>p()</code> and <code>q()</code> again.      
-      </li>    
+      calling <code>p()</code> and <code>q()</code> again.
+      </li>
   </ol>
 
 <p> However, for the second case to work, an evaluation of any predicate
     in the sequence cannot have side effets that woul affect the results
     of other predicates in the sequence. This cannot be enforced
     statically, so we call it undefined behavior.</p>
-    
+
 <p> It is undefined behavior if evaluation of one predicate or
     subexpression thereof affects the result of any other predicate or a
     subexpression thereof in the same test sequence. It is also
@@ -725,7 +728,7 @@ consume(produce());
     of function arguments, the returned value, or any other objects
     odr-used by the predicate. Any other side effects are allowed and
     valid.</p>
-    
+
 <pre>void f(int i) [[pre: ++i]]; <em>// UB if evaluated</em>
 </pre>
 
@@ -734,9 +737,9 @@ consume(produce());
 <pre>void f(int i) [[pre: p(i)]] [[pre: q(i)]];
 </pre>
 
-<p> When function <code>f()</code> is evaluated, it might cause 
+<p> When function <code>f()</code> is evaluated, it might cause
     the following sequence of precondition tests: <code>p(i)</code>,
-    <code>q(i)</code>, <code>p(i)</code>, <code>q(i)</code>. 
+    <code>q(i)</code>, <code>p(i)</code>, <code>q(i)</code>.
     This allows the implementations to test the preconditions
     both inside and outside the function body. This ability is
     useful for generating good error messages from preconditions:
@@ -744,14 +747,64 @@ consume(produce());
     is made through a pointer. But when a call is made directly,
     we can evaluate it outside, and then the error message points at
     the caller, rather than the callee.</p>
-    
-<p> A possible, hypothetical but valid, implementation of a 
+
+<p> A possible, hypothetical but valid, implementation of a
     contract annotation check would be to start a transaction,
     evaluate the predicate, save the result
     on the side, cancel the transaction (therewith erasing all
     side effects since the beginning of the transaction), and
-    just using the stored value instead as a result.</p>     
+    just using the stored value instead as a result.</p>
 
+
+
+<h3><a name="des.ptr">3.6. Indirect function calls
+        <span class="link">{des.ptr}</span></a></h3>
+
+
+<p> Function pointers and references cannot have contract annotations,
+    but functions with contract annotations can be assigned to them:</p>
+
+<pre>using fpa = int(*)(int) [[pre: true]]; <em>// error</em>
+
+using fptr = int(*)(int);
+int (int i) [[pre: i &gt;= 0]];
+
+fptr fp = f;  <em>// OK</em>
+fp(1);        <em>// precondition is checked</em>
+</pre>
+
+<p> In other words, contract annotations are not part of function type.
+    Thanks to this decision, you can write code like:
+    </p>
+
+<pre>int fast(int i) [[pre: i &gt; 0]];
+int slow(int i) [[pre: true]];  <em>// no precondition</em>
+
+int f(int i)
+{
+  int (*fp) (int) = i &gt; 0 ? fast : slow;
+  return fp(i);  <em>// if fast() is called, its precondition is checked</em>
+}
+</pre>
+
+<p> The consequence of this behavior is thatan implementation cannot check
+    the precondition in the place where function is called. The check has to
+    be performed inside the function. Therefore, it is a reasonable
+    implementation strategy to implement the precondition check inside the
+    function in case it is called indirectly, but twhere the function is
+    called directly, check it in the caller, in order to provide, the source
+    location that is the culprit of contract violation. This may sometimes
+    result in checking the same precondition twice.</p>
+
+<p> The same mechanism works for function wrappers:</p>
+
+<pre>
+using fp = int(*)(int);
+int f(int i) [[pre: i &gt;= 0]];
+
+function&lt;int(int)&gt; fp = f;  <em>// OK</em>
+fp(1);   <em>// precondition is checked</em>
+</pre>
 
 
 
@@ -1059,6 +1112,16 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
     for people who can afford to put <code>const</code> in the definition.
     </p>
 
+<p> Another option: silently make a copy of every non-reference parameter
+    referenced in the postcondition. this copy would be only visible to the
+    postcondition, so there is no way a function can posibly change it.
+    While attractive, this would require making silent copies. This may not be
+    satisfactory if a type is expensive to copy, or simply non-copiable,
+    and is a bad trade-off in situations where the function does not modify
+    the parameter anyway. It is a possible future opt-in extension, described
+    in section <a href="#fut.old">{fut.old}</a>.
+    </p>
+
 <p> Finally, there is an option to remove postconditions from this
     proposal. This will however make the same problem reappear
     once we try to add postconditions in the future.
@@ -1138,7 +1201,7 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
     language like C++.
     </p>
 
-<p> It is often impossible for programmers to even know if the 
+<p> It is often impossible for programmers to even know if the
     function they use has any side effects. For instance,
     the specification of <code>std::vector&lt;T&gt;::size() const</code>
     does not prevent the implementations from
@@ -1167,7 +1230,7 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
     one function is the same as the precondition of another function. It also allowed checking the same predicate twice,
     for instance once inside the function body, and the second time in the calling context.</p>
 
-<p> While we drop this undefined behavior on any 
+<p> While we drop this undefined behavior on any
     side effects in a contract predicate, we allow
     similar code transformations, and introduce narrower
     cases that trigger undefined behavior: in situations where
@@ -1181,15 +1244,15 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
     We have a pretty good definition of "benign" side effect in a predicate:
     it does not modify any object that it odr-uses and it doesnot affect
     the resut of any other subsequent predicate in the same correctness test
-    sequence.    
+    sequence.
     </p>
-    
-<p> Why not just use simpler wording and say that a predicate listed in 
+
+<p> Why not just use simpler wording and say that a predicate listed in
     a contract annotation can be evaluated an unspecified number of times
     (including 0 times)? While this would send a clear signal to the users,
-    that the side effects cannot be relied upon, it would not allow the 
+    that the side effects cannot be relied upon, it would not allow the
     predicate transformations that we described earlier.
-    </p>    
+    </p>
 
 
 
@@ -1531,14 +1594,14 @@ bool bar(int i)
 
 
 
-<h2><a name="fut">5. Future compatibility 
+<h2><a name="fut">5. Future compatibility
     <span class="link">{fut}</span></a></h2>
 
 
 <p> While we propose to drop a number of features from the MVP, this proposal does not close the door for
     adding them in the future, once (if) the MVP has been agreed upon and baked. </p>
-    
-    
+
+
 <p> To guarantee backward compatibility as we add features in the future,
     all semantics added in the MVP must not change. Therefore all new features will have to be opt-ins:
     enabled either through new syntax/annotaitons, or through new translation modes.</p>
@@ -1612,19 +1675,34 @@ bool bar(int i)
     </p>
 
 
-<h2><a name="ope">6. Open issues
-    <span class="link">{ope}</span></a></h2>
 
-<h3><a name="ope.syn">6.1. Syntax for introducing names in postconditions</a>
-    <span class="link">{ope.syn}</span></a></h3>
+<h3><a name="fut.old">5.1. Capturing state on funciton entry
+    <span class="link">{fut.old}</span></a></h3>
 
-<p> It has been suggested that postconditions could have a better syntax for introducing the name of the returned value.
-    Any such exploration of syntactic space should take into account that postconditions might need to introduce more names.
-    Postconditions should also be able to capture parts of the program state upon function entry, which in practice means
-    storing a copies of come objects, in <em>Check_and_abort</em> mode. There are two possible approaches.
-    </p>
 
-<p> One is to use a new keyword (or token) for this purpose, like <code>oldof</code> proposed in
+
+<p> It is sometimes desired to express in the postcondition how the state
+    of the program upon return from the function is different from the state
+    that the program had when the function was entered. One notable example
+    of this, is when we want to check that after a successful
+    <code>push_back</code> the size of the sequence container upon return is
+    greater by one than the size of the container upon function entry.
+    However, by the time the precondition is evaluated, the previous state of
+    the container is no more. We would have to make a <em>copy</em> of the
+    portions of the program state that would be later inspected in the
+    postcondition.</p>
+
+<p> There are at least two ways to express this. One is to introduce even more
+    names in the postcondition declaration, and use a syntax similar to the
+    one used in lambda-captures:</p>
+
+<pre>int f(int&amp; i, array&lt;int, 8&gt;&amp; arr)
+  [[post r, old_i = i: r &gt;= old_i]]        <em>// value of i upon entry</em>
+  [[post r, old_7 = arr[7]: r &gt;= old_7]];  <em>// value of arr[7] upon entry</em>
+</pre>
+
+<p> The other option is to use a new keyword (or token) for this purpose,
+    like <code>oldof</code> proposed in
     <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2006/n1962.html">[N1962]</a>:
 
 </p><pre>int f(int&amp; i, array&lt;int, 8&gt;&amp; arr)
@@ -1632,14 +1710,50 @@ bool bar(int i)
   [[post r: r &gt;= oldof(arr[7])]];  <em>// value of arr[7] upon entry</em>
 </pre>
 
-<p>The other option is to introduce new names in a way similar to lambda-captures:</p>
+<p> This future addition would also address the case where a postcondition
+    refers to the non-reference function parameter (see section
+    <a href="#rat.arg">{rat.arg}</a>), but the funciton cannot
+    afford to add <code>const</code>:</p>
+
+<pre>
+template&lt;class ForwardIt, class T&gt;
+ForwardIt find(ForwardIt first, ForwardIt last, const T&amp; value)
+  [[post r: distance(oldof(first), r) &gt;= 0u]]  <em>// `first` not referenced</em>
+  [[post r: distance(r, last) &gt;= 0u]]
+{
+  for (; first != last; ++first) {
+    if (*first == value) {
+      return first;
+    }
+  }
+  return last;
+}
+</pre>
+
+<p> This proposal is open for either of these syntax variants (in the future).
+    </p>
+
+
+<h2><a name="ope">6. Open issues
+    <span class="link">{ope}</span></a></h2>
+
+<h3><a name="ope.syn">6.1. Syntax for introducing names in postconditions</a>
+    <span class="link">{ope.syn}</span></a></h3>
+
+<p> It has been suggested that postconditions could have a better syntax for
+    introducing the name of the returned value.
+    Any such exploration of syntactic space should take into account that
+    postconditions might need to introduce more names, as described in section
+    <a href="#fut.old">{fut.old}</a>""
+    </p>
 
 <pre>int f(int&amp; i, array&lt;int, 8&gt;&amp; arr)
   [[post r, old_i = i: r &gt;= old_i]]        <em>// value of i upon entry</em>
   [[post r, old_7 = arr[7]: r &gt;= old_7]];  <em>// value of arr[7] upon entry</em>
 </pre>
 
-<p>An alternate syntax for postconditions that does not preclude the second option above in the future would be to use parentheses:</p>
+<p> An alternate syntax for postconditions that does not preclude the
+    option above in the future would be to use parentheses:</p>
 
 <pre>int f(int&amp; i, array&lt;int, 8&gt;&amp; arr)
   [[post(r): r &gt;= 0]]                       <em>// for the MVP</em>
@@ -1950,7 +2064,7 @@ precondition tests corresponding to the list of preconditions of <code>f</code>.
 
 For two precondition annotations <em>P1</em> and <em>P2</em> applied to a function,
 if <em>P1</em> appears lexically before <em>P2</em> then the precondition test corresponding to
-<em>P1</em> is sequenced before the precondition test corresponding to <em>P2</em>. 
+<em>P1</em> is sequenced before the precondition test corresponding to <em>P2</em>.
 
 If a function has multiple postconditions,
 their tests (if any) will be performed in the order they appear lexically.
@@ -1960,7 +2074,7 @@ postcondition tests corresponding to the list of postconditions of the function.
 
 For two postcondition annotations <em>P1</em> and <em>P2</em> applied to a function,
 if <em>P1</em> appears lexically before <em>P2</em> then the postcondition test corresponding to
-<em>P1</em> is sequenced before the postcondition test corresponding to <em>P2</em>. 
+<em>P1</em> is sequenced before the postcondition test corresponding to <em>P2</em>.
 
 [<i>Note</i>: A basic precondition test sequence can be empty if the function has
  not preconditions. — <i>end note</i>]
@@ -2012,14 +2126,14 @@ int g(int i)        <em>// error: i is not declared const</em>
 
 The postcondition test sequence (9.12.4.3) is
 sequenced after the initialization of the returned value, and
-after the destruction of objects with automatic 
+after the destruction of objects with automatic
 storage durtion declared in the function body.
 
-The postcondition test sequence is sequenced before 
+The postcondition test sequence is sequenced before
 the destruction of function arguments.
 
-[<i>Note</i>: Therefore, a postcondition can inspect the state of 
-the return value and function arguments. — <i>end note</i>]</p> 
+[<i>Note</i>: Therefore, a postcondition can inspect the state of
+the return value and function arguments. — <i>end note</i>]</p>
 
 </p>
 
@@ -2303,6 +2417,7 @@ specialization are independent of those of the primary template.— <i>end note<
 
 <p>Ville Voutilainen offered numerous useful suggesions to improve the quality of the paper.</p>
 
+<p>John McFarlane offered useful suggestions that improved the quality of the paper.</p>
 
 
 <h2><a name="ref">9. References
