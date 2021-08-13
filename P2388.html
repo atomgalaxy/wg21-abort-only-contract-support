@@ -808,6 +808,119 @@ fp(1);   <em>// precondition is checked</em>
 
 
 
+<h3><a name="des.vir">3.7. Virtual functions
+        <span class="link">{des.vir}</span></a></h3>
+
+
+<p> You can put contract annotations on virtual functions, however they
+    behave in a certain way in the overriding functions. You can omit
+    contract annotations in the overriding function. The overriding function
+    then has the same contract annotations as the virtual function in the base
+    class, and the names in the predicates are looked up in the context of the
+    base class.</p>
+
+<pre>
+static const int N = 1; <em>// #1</em>
+
+struct Base
+{
+  virtual void f() [[pre: N == 1]];
+};
+
+template &lt;int N&gt;       <em>// N is shadowed</em>
+struct Deriv : Base
+{
+  void f() override;
+};
+
+int main()
+{
+  Deriv&lt;2&gt;{}.f(); <em>// precondition test passes</em>
+}
+</pre>
+
+<p> The precondition in the overriding funciton is <code>N == 1</code>,
+    but the name lookup is performed in the context of class <code>Base</code>,
+    so it sees the global variable <code>N</code> declared in line #1.</p>
+
+<p> You cannot declare a contract annotation in the overriding funciton
+    if the virtual function in the base class doesn't have a corresponding
+    contract annotation.
+    </p>
+
+<p> You can declare a contract annotation in the overriding function, but it has
+    to be identical (modulo the names of function parameters) to the
+    corresponding contract in the overriden function. However, the program is
+    ill formed, no diagnostic required, if name lookup in the predicate finds
+    different entities than if the name lookup were performed in the context
+    of the base class:</p>
+
+<pre>
+static const int N = 1; <em>// #1</em>
+
+struct Base
+{
+  virtual void f()
+    [[pre: N == 1]]
+    [[post: sizeof(*this) &lt; 100]];
+};
+
+template &lt;int N&gt;       <em>// N is shadowed</em>
+struct Deriv : Base
+{
+  int i[100];
+
+  void f() override
+    [[pre: N == 1]]                 <em>// IF-NDR, finds different N</em>
+    [[post: sizeof(*this) &lt; 100]];  <em>// IF-NDR, inspects different class</em>
+};
+</pre>
+
+<p> We do not allow the preconditions in the overriding funciton to be "wider"
+    and the postconditions to be "narrower" than in the overriden function.
+    Inheritance also means inheriting the contract. If you need the overriden
+    function to be called out of contract of the base class, you have to provide
+    a separate function:
+    </p>
+
+<pre>
+struct Base
+{
+  virtual int fun(int i)
+    [[pre: i &gt;= 0]]
+    [[post r: r &gt;= 0]];
+};
+
+template &lt;int N&gt;
+struct Deriv : Base
+{
+  int fun_wide(int i)
+  {
+    return i;
+  }
+
+  virtual int fun(int i)
+    [[pre: i &gt;= 0]]
+    [[post r: r &gt;= 0]]
+  {
+    return fun(int i);
+  }
+};
+</pre>
+
+
+<p> The above example also illustrates that a feature request "I want the
+    postcondition in the overriding to be the same or narrower than the
+    postcondition in the overridden fuction" is conceptually wrong.
+    Function <code>fun_wide()</code> has a wider postcondition than
+    <code>fun()</code>, but it is still substitutable for <code>fun()</code>.
+    This is because <code>fun_wide()</code> will never return a negative number
+    as long as it does not obtain a negative number as input. A postcondition
+    can never be treated in isolation from the function's precondition.
+    </p>
+
+
+
 <h2><a name="rat">4. Design rationale <span class="link">{rat}</span></a></h2>
 
 
@@ -1524,7 +1637,7 @@ public:
     allow such transformations. First, they can never be guaranteed or required:
     a compiler vendor must choose to make an effort and implement them. If a
     compiler vendor implements such transformations, it can offer the feature
-    as a non-confoirming extension, such as </code>__builtin_unreachable()</code>.
+    as a non-confoirming extension, such as <code>__builtin_unreachable()</code>.
     </p>
 
 <p> In fact, this proposal indirectly allows the programmer to achieve the same
@@ -1737,7 +1850,7 @@ ForwardIt find(ForwardIt first, ForwardIt last, const T&amp; value)
 <h2><a name="ope">6. Open issues
     <span class="link">{ope}</span></a></h2>
 
-<h3><a name="ope.syn">6.1. Syntax for introducing names in postconditions</a>
+<h3><a name="ope.syn">6.1. Syntax for introducing names in postconditions
     <span class="link">{ope.syn}</span></a></h3>
 
 <p> It has been suggested that postconditions could have a better syntax for
@@ -2133,7 +2246,7 @@ The postcondition test sequence is sequenced before
 the destruction of function arguments.
 
 [<i>Note</i>: Therefore, a postcondition can inspect the state of
-the return value and function arguments. — <i>end note</i>]</p>
+the return value and function arguments. — <i>end note</i>]
 
 </p>
 
