@@ -1,4 +1,4 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<!DOCTYPE html>
 <html><head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -68,24 +68,22 @@ td { text-align: left;  padding-left: 0.4em; border: none;  padding-right: 0.4em
   </tr>
 </tbody></table>
 
+<h1>Minimum Contract Support: either <em>Ignore</em> or <em>Check_and_abort</em></h1>
 
-
-<h1>Minimum Contract Support: either Ignore or Check_and_abort</h1>
-
-
-<p> This paper proposes a contract support framework which is smaller than
-    <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2182r1.html">[P2182R1]</a>.
-    We try to remain compatible with the plan in <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2182r1.html">[P2182R1]</a>
-    to introduce contract support in phases, with the first phase (the
-Minimum Viable Product, MVP) being able to achieve the following goals:</p>
+<p>
+This paper proposes a minimal contract support framework for C++.
+It is the first phase of the plan in
+<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2182r1.html">[P2182R1]</a>. As such, it is the
+Minimum Viable Product (MVP) achieving the following goals:
+</p>
 
 <ol>
   <li>Be a coherent whole, and provide a value to multiple groups of developers.</li>
-  <li>Be small enough to guarantee that it will progress fast through the standardization pipeline.</li>
-  <li>Be devoid of any controversial design issues; this is to obtain the maximum consensus.</li>
+  <li>Be small enough to progress through the standardization pipeline for c++23.</li>
+  <li>Side-step all controversial design issues to obtain consensus.</li>
 </ol>
 
-<p>Under this proposal a function containing an assertion annotation:</p>
+<p>As a sketch: a function containing an assertion annotation:</p>
 
 <pre>bool fun(int a, int b)
 {
@@ -93,12 +91,12 @@ Minimum Viable Product, MVP) being able to achieve the following goals:</p>
   return transform(a, b);
 }</pre>
 
-<p>Can render the runtime code where the precondition annotation is either ignored or produces code equivalent to:</p>
+<p>In <em>Check_and_abort</em> mode, this renders runtime code equivalent to:</p>
 
 <pre>bool fun(int a, int b)
 {
   [&amp;]() noexcept {
-    if (are_compatible(a, b) == false) {
+    if (are_compatible(a, b)) {} else {
       CONTRACT_VIOLATION_HANDLER("are_compatible(a, b)");
       std::abort();
     }
@@ -107,10 +105,11 @@ Minimum Viable Product, MVP) being able to achieve the following goals:</p>
   return transform(a, b);
 }</pre>
 
-<p> That is: a runtime check is performed, and if it returns <code>false</code> an implementation-defined message is displayed
-    to STDERR and <code>std::abort()</code> is called. If any exception is thrown during the evaluation of the predicate or the
+<p> That is: a runtime check is performed, and if it returns something <code>false</code>y, an implementation-defined message is displayed
+    to the stream buffer associated with the object <code>stderr</code> and <code>std::abort()</code> is called. If any exception is thrown during the evaluation of the predicate or the
     logging statement, <code>std::terminate()</code> is called.</p>
 
+<p>In <em>Ignore</em> mode, the code is rendered without calling the lambda (thus odr-using the predicate, but not evaluating it).</p>
 
 
 <h2><a name="rev">0. Revision history <span class="link">{rev}</span></a></h2>
@@ -125,14 +124,12 @@ Minimum Viable Product, MVP) being able to achieve the following goals:</p>
   <li>Resolved open issue: objects are not treated as const in contract predicates.</li>
   <li>Resolved open issue: implementations may (but don't have to)
 runtime-check contract annotations in core constant expressions even in
-Ignore mode.</li>
+<em>Ignore</em> mode.</li>
   <li>Added an open issue: alternate postcondition syntax.</li>
   <li>Expanded the design details and rationale section, based on feedback from SG21.</li>
 </ol>
 
-
-
-<h2><a name="ovr">1. Overview <span class="link">{ovr}</span></a></h2>
+<h2><a name="term">1. Terminology <span class="link">{term}</span></a></h3>
 
 <p> In this document we use the following terms recommended in
     <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2038r0.html">[P2038R0]</a> and
@@ -155,13 +152,16 @@ function "specification".)</dd>
     Contract annotations can express a subset of function specification.</dd>
 </dl>
 
-<p> The minimum contract support proposed in this paper consists of the following elements. The attribute-like syntax for declaring
-    preconditions and postconditions on function declarations, and assertions inside function bodies:</p>
+<h2><a name="ovr">2. Proposal <span class="link">{ovr}</span></a></h2>
+
+<p>There are three kinds of contract annotations: <strong>preconditions</strong> and <strong>postconditions</strong> on function declarations, and <strong>assertions</strong> inside function bodies.</p>
+
+<p>Contract annotations use an attribute-like syntax:</p>
 
 <pre>int select(int i, int j)   <em>// first declaration</em>
   [[pre: i &gt;= 0]]
   [[pre: j &gt;= 0]]
-  [[post r: r &gt;= 0]];      <em>// `r` names the return value</em>
+  [[post r: r &gt;= 0]];      <em>// r names the return value</em>
 
 int select(int i, int j);  <em>// subsequent declarations can</em>
                            <em>// repeat or ignore the annotations</em>
@@ -175,68 +175,81 @@ int select(int i, int j)   <em>// the definition</em>
 }
 </pre>
 
-<p> We require that the implementation allows the translation of the program in two modes: </p>
+<p>We specirfy the semantics of two modes of program translation:</p>
 
 <ol>
-  <li><em>Ignore</em>: compiler checks the validity of expressions in contract annotations,
-      but the annotations have no effect on the generated binary. However, functions appearing in the predicate are ODR-used.
+  <li><strong><em>Ignore</em></strong>: compiler checks the validity of expressions in contract annotations,
+      but the annotations have no effect on the generated binary. Functions appearing in the predicate are ODR-used.
       </li>
-  <li><em>Check_and_abort</em>: for each contract annotation compiler generates a runtime check.
-      The check evaluates the corresponding predicate, and if this evaluates to <code>false</code>
-      a <em>contract violation handler</em> is invoked.
+  <li><strong><em>Check_and_abort</em></strong>: each contract annotation is checked at runtime.
+      The check evaluates the corresponding predicate; if the result equals <code>false</code>,
+      an implementation-defined <em>contract violation handler</em> is invoked.
       </li>
 </ol>
 
 <p> We recommend (the ISO word "should") that the default mode is <em>Check_and_abort</em>.
 
-</p><p> What a contract violation handler does is implementation-defined subject to the following constraint.
-    The control never leaves the violation handler. It can either stop the program or run forever
-    (e.g., in infinite loop or hit a breakpoint). If the program exits, an implementation-defined form
-    of the status <em>unsuccessful termination</em> is returned. We recommend (the ISO word "should")
-    that the violation handler outputs a diagnostic message to the standard diagnostic stream and calls <code>std::abort()</code>.
+<h3><em>Check_and_abort</em> contract violation handler semantics</h3>
+
+<p>The semantics of the contract violation handler are implementation-defined, subject to the following constraint:
+    <b>control never leaves the violation handler</b>.
+    It can stop the program, hit a breakpoint, or run forever after emailing a sysadmin, for instance.
+    If the program exits, it must signal unsuccessful termination appropriately for the context, such at returning a non-zero error code (as with <code>abort()</code>).
+    We recommend (the ISO word "should") that the violation handler output a diagnostic message to the standard diagnostic stream and call <code>std::abort()</code>.
     This corresponds to what <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2358r0.pdf">[P2358R0]</a>
     calls "Unspecified but never returns" and what <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1606r0.pdf">[P1606R0]</a>
     calls "check_never_continue".</p>
 
-<p> We allow the implementations to provide a mixed mode, where some translation units are translated in
-    <em>Ignore</em> mode and others in <em>Check_and_abort</em> mode. This may be necessary for linking
-    the user program with compiled libraries.</p>
+<h3>Name lookup in pre-/post-conditions</h3>
 
-<p> This proposal does not include things like "assertion levels", "continuation mode", or the ability
-    to install a custom violation handler.</p>
+<p> Name lookup for preconditions and postconditions is performed as in the trailing return type.
+  
+<h3>Access control</h3>
 
-<p> Name lookup for preconditions and postconditions is performed as in trailing return type. Access control
-    is performed as if the predicate was evaluated inside the function. This means that private and
-    protected members are accessible in predicates of preconditions and postconditions of member and befriended functions.
-    </p>
+<p>
+Access control is performed as if the predicate was evaluated inside the body of
+the function, making private and protected members of the containing class
+accessible to predicates of preconditions and postconditions of member and
+befriended functions.
+</p>
 
 <p> Preconditions and postconditions are checked (in <em>Check_and_abort</em> mode)
     even if the function is called through a pointer.</p>
 
-<p> This proposal does not allow preconditions and postconditions for lambdas. Name lookup is already problematic
-    in lambdas in the face of lambda captures. This problem is pursued in
-    <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2036r1.html">[P2036R1]</a>,
-    and until it has been solved we see no point in delaying the minimum contract support proposal.</p>
+<h3>Side-effects</h3>
 
-<p> Although it is discouraged, side effects are allowed in the
-    predicates of contract annotations. However, we allow
-    implementations both to remove and to duplicate these side effects,
-    so they cannot be relied upon.</p>
+<p> Side effects are supported in the predicates of contract annotations.
+    Implementations are allowed to both remove or duplicate these side effects,
+    so they cannot be relied upon. This is similar to the existing rules around eliding copy-constructor side-effects.
 
 <p> Looking at the source code with contract annotations alone — that is, not looking at compiler switches —
-    the programmer has no guarantee if predicates in contract annotation will be runtime-evaluated or not, or
+    the programmer has no guarantee if predicates in contract annotation will be evaluated at runtime or not, or
     if the program is stopped after such evaluation. Whether the side effects of predicates are evaluated
     (one or more times) or not — even in <em>Check_and_abort</em> mode — is unspecified.</p>
 
+<h3>Mixed-mode linking</h3>
 
+<p> Implementations are allowed to provide a mixed mode, where some translation units are translated in
+    <em>Ignore</em> mode and others in <em>Check_and_abort</em> mode. This may be necessary for linking
+    the user program with compiled libraries.</p>
 
-<h3><a name="ovr.can">1.1. What you (don't) get with this proposal <span class="link">{ovr.can}</span></a></h3>
+<h2><a name="not">3. Deferred features</a></h2>
 
+<p>These features are deferred due to unresolved issues. This proposal makes sure not to block any of these being proposed in the future.</p>
 
-<p> This proposal aims to be small. Some important use cases are not covered.
-    </p>
+<ul>
+<li>assertion levels: unresolved issues around fallthrough, among many other things. Expecting future proposals in this space.</li>
+<li>continuation mode: unresolved issues around fallthrough. Expecting future proposals in this space.</li>
+<li>ability to install a custom violation handler: unresolved issues around pretty much everything.</li>
+<li>a way to express preconditions and postconditions for lambdas: name lookup is already problematic
+    in lambdas in the face of lambda captures. This problem is pursued in
+    <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2036r1.html">[P2036R1]</a>,
+    and until it has been solved we see no point in delaying the minimum contract support proposal.</li>
+</ul>
 
-<p> What you can do with this proposal:</p>
+<h2><a name="faq">4. FAQ: can I do X?<span class="link">{faq}</span></a></h3>
+
+<h3>4.1 What you can do with this proposal:</h3>
 
 <ol>
   <li>Programmer: The ability to declare parts of your functions' contract in the source
@@ -254,7 +267,7 @@ int select(int i, int j)   <em>// the definition</em>
 </ol>
 
 
-<p> What you cannot do with this proposal:</p>
+<h3>4.2 What you cannot do with this proposal:</h3>
 
 <ol>
   <li>Programmer: You may not be able to (depending on the compiler) to
@@ -273,10 +286,10 @@ int select(int i, int j)   <em>// the definition</em>
   <li>Library vendor: You will not be able to insert "experimental" contract
       annotations without the risk of terminating your user's program.
       </li>
-  <li>Library vendor: You will not be able unit-test your contract annotations
-      by making the program throw from a failed contract test.
+      <li>Library vendor: throwing from a failed contract test is not a supported way of unit-testing contract annotations. Death-tests are available in popular testing frameworks such as google test and should work for this scenario.
       </li>
 </ol>
+
 
 <p> We consider these use cases valid and important. Our choice is not to
     support them in the MVP, but to ultimately enable their support in the future.
@@ -285,63 +298,61 @@ int select(int i, int j)   <em>// the definition</em>
     </p>
 
 
-<h3><a name="ovr.lib">1.2. Linking with third-party libraries
+<h3><a name="ovr.lib">4.3. How does linking with 3rd-party libraries work?
     <span class="link">{ovr.lib}</span></a></h3>
 
-<p> How does linking with third-party libraries work?
+<p>A library does not have to declare contract annotations
+    (even the Standard Library). If so, this is as now.
+</p>
+
+<p>Libraries that declare contract annotations and ship compiled binaries
+    will have to ship two versions: one compiled in <em>Ignore</em> mode, and one in <em>Check_and_abort</em>.
+    This also applies to the Standard Library.
     </p>
 
-<p> First, a library does not have to declare contract annotations
-    (even the Standard Library). Then the answer is simple.
-    </p>
-
-<p> Libraries that declare contract annotations and ship compiled binaries
-    would have to ship two versions: one with contract checking enabled, the
-    other with contract checking disabled. This also applies to the Standard
-    Library.
-    </p>
+<p>One can also see toolchains supporting mangling the contract mode into the symbol name and emitting code for both into the same fat binary.</p>
 
 
-<h2><a name="mot">2. Motivation <span class="link">{mot}</span></a></h2>
+<h2><a name="mot">5. Motivation <span class="link">{mot}</span></a></h2>
 
 <p> The motivation for adding contract support to the language has already been provided multiple times, for example in
     <a href="http://www.open-std.org/JTC1/SC22/WG21/docs/papers/2004/n1613.pdf">[N1613]</a>,
     <a href="http://www.open-std.org/JTC1/SC22/WG21/docs/papers/2005/n1800.pdf">[N1800]</a>,
-    <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4110.pdf">[N4110]</a>,
-    <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4075.pdf">[N4075]</a>,
+      <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4110.pdf">[N4110]</a>,
+      <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4075.pdf">[N4075]</a>,
     <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4135.pdf">[N4135]</a>,
     <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0380r0.pdf">[P0380R0]</a>,
     <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2182r1.html">[P2182R1]</a>.
-    In very short, contract annotations allow the programmers to define what they consider a
-    bug in their code. This information can be used by tools in a number of ways.</p>
+    In brief, contract annotations allow the programmers to encode what they consider a
+    bug in code. This information can be used by tools in a number of ways.</p>
 
 <p> The motivation for starting with a minimal set of features has been provided in
     <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2182r1.html">[P2182R1]</a>.
-    In short, the goal is to minimize the risk of having the discussions and disagreements about
-    the secondary features of contract support framework impede or prevent the addition of the primary
+    In summary, it is to minimize the risk of having the discussion or disagreement about
+    the secondary features of the contract support framework impede or prevent the addition of the primary
     functionality: the ability for the programmer to communicate what is considered a bug in the program.
-    Thus, the plan for the MVP is to first determine if there exists a minimal subset that would
-    be considered uncontroversial and gather consensus, polish it, and deliver reasonably fast.
-    Only when this has been done, to start adding the secondary features on top of the stable core,
-    and if these features fail to get consensus, the core part of contract support framework would not be
-    in the risk of being removed or postponed.</p>
+    The plan for the MVP is therefore to find a minimal uncontroversial subset,
+    gather consensus around it, polish, and deliver it quickly.</p>
 
-<p> We have observed that even the portions of <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2182r1.html">[P2182R1]</a>
-    arose controversies. This paper proposes to remove these portions.
+<p>The secondary features can then be proposed on top of this stable core;
+   but, since it has shipped, the core part of contract support framework will not be
+   at risk of being removed or postponed even if they run into issues.</p>
+
+<p>We have observed that even the portions of <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2182r1.html">[P2182R1]</a>
+    arose controversies. This paper to removes these portions.
     </p>
 
 
-<h3><a name="mot.two">2.1. Two programming models
+<h3><a name="mot.two">5.1. Two programming models
     <span class="link">{mot.two}</span></a></h3>
 
 
-<p> We have identified that there are at least two views on what a contract violation means.
-    They both have supporters among the interested parties.</p>
+<p> There are at least two views on what a contract violation means among the stakeholders.</p>
 
 <p> One view is that contract violation indicates a bug, and this situation is as serious as dereferencing
     a null pointer or making an invalid access to memory. If this situation is detected at run-time,
-    the only acceptable default action is to immediately abort the execution of the program. This is
-    in order to prevent any further damage.</p>
+    the only acceptable default action is to immediately abort the execution of the program
+    to prevent any further damage.</p>
 
 <p> The other view is that the contract violation is just a piece of information, usually about a bug
     (but not always: for instance, in unit tests a programmer may violate a contract on purpose), that can
@@ -350,7 +361,7 @@ int select(int i, int j)   <em>// the definition</em>
     </p>
 
 <p> The two views conflict in whether anything other than program termination should be allowed after
-    a runtime-confirmed contract violation. But they also have overlapping parts:</p>
+    a runtime-confirmed contract violation, but they also have overlapping parts:</p>
 
 <ol>
   <li>The common syntax for contract annotations.</li>
@@ -363,9 +374,9 @@ int select(int i, int j)   <em>// the definition</em>
     It allows the programmers to declare what they know to be a bug in their components.
     It allows tools other than compilers — such as static analyzers or IDEs —
     to diagnose or help diagnose bugs in programs statically. The <em>Check_and_abort</em> mode
-    gives a guarantee to programmers that if a bug is detected at run-time the program —
+    gives a guarantee to programmers that if a bug is detected at run-time, the program —
     apart from aborting — will do no further damage. This enables UB-sanitizers to diagnose
-    not only abstract machine violations ("hard" UB) but also contract violations: in a uniform way
+    not only abstract machine violations ("hard" UB) but also contract violations in a uniform way
     (provided that this way does not require the program to continue after the reported violation).
     </p>
 
@@ -374,7 +385,7 @@ int select(int i, int j)   <em>// the definition</em>
     that it is missing features.</p>
 
 
-<h3><a name="mot.too">2.2. Is the proposal not too small?
+<h3><a name="mot.too">5.2. Is the proposal not too small?
     <span class="link">{mot.too}</span></a></h3>
 
 
@@ -383,17 +394,16 @@ int select(int i, int j)   <em>// the definition</em>
     to continue the program execution after a runtime correctness
     check has failed is brought up in this context.</p>
 
-<p> In section <a href="#rat.con">{rat.con}</a> we describe,
-    why we believe that designing the continuation mode so that it
+<p> In section <a href="#rat.con">{rat.con}</a> we describe
+    why designing the continuation mode so that it
     avoids introducing surprising new reasons for undefined behavior
-    and gathers consensus, will take a long time, and will
-    put the C++23 deadline at risk.
+    and gathers consensus will take a long time, will as such not ship in C++23.
     </p>
 
 <p> We can see two options:</p>
 
 <ol>
-    <li>Deliver a feature-rich solution for C++26, or later or never.</li>
+    <li>Deliver a feature-rich solution for C++26, or later, or never.</li>
     <li>Deliver a reduced set of features for C++23; deliver the remaining features for C++26, or later or never.</li>
     </ol>
 
@@ -401,16 +411,15 @@ int select(int i, int j)   <em>// the definition</em>
     disagrees that the reduced feature set is "viable" for one's use cases.
     </p>
 
-<h2><a name="des">3. Design details <span class="link">{des}</span></a></h2>
+<h2><a name="des">6. Design details <span class="link">{des}</span></a></h2>
 
 
-
-<h3><a name="des.gol">3.1. Design goals <span class="link">{des.gol}</span></a></h3>
+<h3><a name="des.gol">6.1. Design goals <span class="link">{des.gol}</span></a></h3>
 
 
 <p> We want to provide a uniform notation, usable in different contexts &mdash;
     in this proposal these contexts are function declarations and function
-    bodies &mdash; for expressing runtime conditions that necessarily constitute
+    bodies &mdash; for expressing runtime conditions, the violation of which necessarily constitutes
     a bug in the program. Such information can be consumed in a number of ways, by many different
     tools, most of which are outside of the scope of the C++ Standard; we
     want all the tools to consume the same notation. </p>
@@ -422,27 +431,25 @@ int select(int i, int j)   <em>// the definition</em>
     can be added on top of this proposal while preserving backwards compatibility.
    </p>
 
-<p> We want the proposal to be zero-overhead: programmers should be able to
+<p> We want the proposed to be zero-overhead: programmers should be able to
     add contract annotations and compile the program in a mode that doesn't add
     a single instruction to the compiled program.</p>
 
 <p> We want other programmers to get the guarantee that the program never continues
     once it has been determined, through the correctness annotations, that it
-    has a bug. This goal seems somewhat contradictory with the previous one,
+    has encountered an illegal state. This goal seems somewhat contradictory with the previous one,
     but we manage to combine them through the introduction of <em>translation
     modes</em>. This means that a correctness annotation can have different
     effects on the compiled program, depending on what translation mode it was
     compiled with.
 
 
-
-<h3><a name="des.pre">3.2. Predicates <span class="link">{des.pre}</span></a></h3>
-
+<h3><a name="des.pre">6.2. Predicates <span class="link">{des.pre}</span></a></h3>
 
 
-<p> This proposal comes with a small tool that is able to consume the
-    correctness annotations. This is the ability to perform a runtime
-    check if the check concludes that we have a bug, to stop the program.</p>
+
+<p> In addition to the syntax of contract annotation, this proposal includes the facility that uses them:
+    the ability to check them at runtime, and stop the program if the check fails.
 
 <pre>int fun(int i)
 {
@@ -456,17 +463,17 @@ int main()
   std::cout &lt;&lt; "hello\n";
 }</pre>
 
-<p> This program can have two different outcomes, depending on whether we enable
+<p> Running this program can have two different effects, depending on whether we enable
     the generation of runtime-checks. If we don't, the program will output "hello"
-    and return value 0. If we do, this program will immediately call
-    <code>std::abort()</code>.
+    and exit 0; but if if we enable them, this program will exit via
+    <code>std::abort()</code> before printing "hello".
 
 <p> <code>[[assert:</code> <em>Pred</em><code>]]</code> is a correctness annotation:
     one that appears inside function body, as a statement. <em>Pred</em> names a
     predicate. If the predicate returns <code>false</code> it means we have a bug.
     If it returns <code>true</code>, we do not know if we have any bug or not.</p>
 
-<p> In order for such runtime test to work, <em>Pred</em> has to be a valid C++
+<p> In order for such a runtime test to work, <em>Pred</em> has to be a valid C++
     expression convertible to <code>bool</code>. However, it differs slightly
     from just any other expression.
     </p>
@@ -505,10 +512,10 @@ int main()
     returns 0, then function <code>fun()</code> is called such that the predicate
     in the precondition does not hold.</p>
 
-<p> Term "to hold" implies having a predicate in the mathematical sense:
-    one that returns a true-false answer and has no effect on the environment:
-    because in mathematics there is no such things as "environment". But
-    in an imperative language like C++, expressions have <em>side effects</em>.
+<p> Here, a precondition "hold"ing implies having a predicate in the mathematical sense:
+    one that returns a true-false answer, and has no effect on the environment,
+    since in mathematics there is no such thing as an "environment".
+    However, in an imperative language like C++, expressions have <em>side effects</em>.
     The expression in the precondition above doesn't have side effects, so the
     meaning is clear, but a static analyzer would have a hard time (and we also)
     if the precondition on the function read:
@@ -535,12 +542,12 @@ int main()
 
 
 
-<h3><a name="des.ret">3.3. Naming the return value
-    <span class="link">{des.ret}</span></a></h3>
+<h3><a name="des.ret">6.3. Naming the return value
+       <span class="link">{des.ret}</span></a></h3>
 
 
 
-<p> A postcondition expresses the effects that a function guarantees when:</p>
+    <p> A postcondition expresses the effects that a function guarantees when:</p>
 
 <ul>
    <li>its preconditions are satisfied, and</li>
@@ -568,7 +575,7 @@ int main()
 </pre>
 
 <p> The compiler has to parse the contract annotation in order to determine if
-    the expression is well formed. But this task is impossible when we do not
+    the expression is well formed, but this task is impossible when we do not
     know the type of the object. This problem does not occur in a function
     template declaration, because the task of verifying the validity of the
     expression is deferred until instantiation time:</p>
@@ -594,11 +601,11 @@ auto get_digit()
 
 
 
-<h3><a name="des.arg">3.4. Function arguments in postconditions
+<h3><a name="des.arg">6.4. Function arguments in postconditions
     <span class="link">{des.arg}</span></a></h3>
 
 
-<p> A postconditions may describe a relation between the returned value and
+<p> A postcondition may describe a relation between the returned value and
     and function arguments:</p>
 
 <pre>int generate(int lo, int hi)
@@ -668,7 +675,7 @@ int generate(const int lo, const int hi) <em>// OK</em>
 
 
 
-<h3><a name="des.eff">3.5. Side effects in predicates
+<h3><a name="des.eff">6.5. Side effects in predicates
     <span class="link">{des.eff}</span></a></h3>
 
 
@@ -751,13 +758,13 @@ consume(produce());
 <p> A possible, hypothetical but valid, implementation of a
     contract annotation check would be to start a transaction,
     evaluate the predicate, save the result
-    on the side, cancel the transaction (therewith erasing all
+    on the side, cancel the transaction (thereby erasing all
     side effects since the beginning of the transaction), and
     just using the stored value instead as a result.</p>
 
 
 
-<h3><a name="des.ptr">3.6. Indirect function calls
+<h3><a name="des.ptr">6.6. Indirect function calls
         <span class="link">{des.ptr}</span></a></h3>
 
 
@@ -792,7 +799,7 @@ int f(int i)
     be performed inside the function. Therefore, it is a reasonable
     implementation strategy to implement the precondition check inside the
     function in case it is called indirectly, but where the function is
-    called directly, check it in the caller, in order to provide, the source
+    called directly, check it in the caller, in order to provide the source
     location that is the culprit of contract violation. This may sometimes
     result in checking the same precondition twice.</p>
 
@@ -808,7 +815,7 @@ fp(1);   <em>// precondition is checked</em>
 
 
 
-<h3><a name="des.vir">3.7. Virtual functions
+<h3><a name="des.vir">6.7. Virtual functions
         <span class="link">{des.vir}</span></a></h3>
 
 
@@ -921,11 +928,11 @@ struct Deriv : Base
 
 
 
-<h2><a name="rat">4. Design rationale <span class="link">{rat}</span></a></h2>
+<h2><a name="rat">7. Design rationale <span class="link">{rat}</span></a></h2>
 
 
 
-<h3><a name="rat.att">4.1. Why not use attributes
+<h3><a name="rat.att">7.1. Why not use attributes
     <span class="link">{rat.att}</span></a></h3>
 
 <p> An alternative syntax for contract annotations would be to use attributes:</p>
@@ -957,7 +964,7 @@ int f(int i)
 
 
 
-<h3><a name="rationale.tu_incompat">4.2. Incompatible contract annotation across translation units</a></h3>
+<h3><a name="rationale.tu_incompat">7.2. Incompatible contract annotation across translation units</a></h3>
 
 
 <p> Because we do not require contract annotations to be repeated on subsequent function declarations,
@@ -1038,7 +1045,7 @@ of pre-/postconditions, or both, is called in Abort_and_continue mode.</li>
 
 
 
-<h3><a name="rat.arg">4.3. Why require <code>const</code> for non-reference args?
+<h3><a name="rat.arg">7.3. Why require <code>const</code> for non-reference args?
     <span class="link">{rat.arg}</span></a></h3>
 
 
@@ -1127,7 +1134,7 @@ string forward(string str) <em>// disallowed in our proposal</em>
     that a move is taking place. Adding <code>const</code> prevents
     the move.</p>
 
-<p> Why do we require it only for non-reference arguments?</p>
+<h3> Why do we require it only for non-reference arguments?</h3>
 
 <p> First, there is no
     way to require it for reference arguments: they cannot be <code>const</code>.
@@ -1142,7 +1149,7 @@ string forward(string str) <em>// disallowed in our proposal</em>
 </pre>
 
 <p> Is this measure enough? What about pointers? Even if they are const,
-    the value they point ot can be mutated.</p>
+    the value they point to can be mutated.</p>
 
 <p> The answer is the same as for the references: you can clearly see from the
     declaration that the function is allowed access to objects from your scope,
@@ -1173,7 +1180,7 @@ public:
 
 <p> When we copy objects of this type, the copy is tied to the original,
     so when we modify the copy, this automatically modifies the original.
-    We believe, it is a fair compromise to not take care about types like this.
+    We believe it is a fair compromise to not take care about types like this.
     </p>
 
 <p> The downside of the solution with adding <code>const</code> is that
@@ -1240,7 +1247,7 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
     once we try to add postconditions in the future.
     </p>
 
-<h3><a name="rat.con">4.4. Why disallow continuation (for now)
+<h3><a name="rat.con">7.4. Why disallow continuation (for now)
     <span class="link">{rat.con}</span></a></h3>
 
 
@@ -1271,10 +1278,10 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
 
 <p> We believe that "the continuation mode" is a useful feature that is necessary for some essential applications
     (like adding contracts in libraries in stages). Our motivation for omitting it from the MVP is the timing
-    concerns: we want to deliver a small but relatively useful feature fast.</p>
+    concerns: we want to deliver a small but relatively useful feature quickly.</p>
 
 
-<h3><a name="rat.exc">4.5. Why disallow throwing on contract violation  (for now)
+<h3><a name="rat.exc">7.5. Why disallow throwing on contract violation  (for now)
     <span class="link">{rat.exc}</span></a></h3>
 
 <p> We propose to disallow throwing upon detected contract violation because it falls
@@ -1292,7 +1299,7 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
 <p> This makes the proposal smaller, and therefore more likely to progress faster through the WG21 process.</p>
 
 
-<h3><a name="rat.hnd">4.6. Why no user-provided violation handler (for now)</a>
+<h3><a name="rat.hnd">7.6. Why no user-provided violation handler (for now)</a>
     <span class="link">{rat.hnd}</span></h3>
 
 <p> Not proposing the ability to install user-provided violation handlers is again motivated by timing constraints.
@@ -1303,7 +1310,7 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
 
 
 
-<h3><a name="rat.eff">4.7. Why allow side effects in predicates
+<h3><a name="rat.eff">7.7. Why allow side effects in predicates
     <span class="link">{rat.eff}</span></a></h3>
 
 
@@ -1369,7 +1376,7 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
 
 
 
-<h3><a name="rat.eli">4.8. Why include side effect elision in the MVP
+<h3><a name="rat.eli">7.8. Why include side effect elision in the MVP
     <span class="link">{rat.eli}</span></a></h3>
 
 
@@ -1382,7 +1389,7 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
 
 
 
-<h3><a name="rationale.access">4.9. Why allow access to private and protected members</a></h3>
+<h3><a name="rationale.access">7.9. Why allow access to private and protected members</a></h3>
 
 <p> Programming guidelines often recommend that in contract predicates of public member
     functions one should only use the public interface of the class. This is in case the
@@ -1438,7 +1445,7 @@ public:
 
 
 
-<h3><a name="rationale.no_default">4.10. Why not mandate a default translation mode</a></h3>
+<h3><a name="rationale.no_default">7.10. Why not mandate a default translation mode</a></h3>
 
 
 <p> We recommend that the default mode is <em>Check_and_abort</em>, but we do not require this of the
@@ -1458,7 +1465,7 @@ public:
 
 
 
-<h3><a name="rationale.no_const">4.11. No gratuitous <code>const</code> qualification</a></h3>
+<h3><a name="rationale.no_const">7.11. No gratuitous <code>const</code> qualification</a></h3>
 
 
 <p> Ideally, we would like contract predicates to be referentially transparent
@@ -1501,7 +1508,7 @@ public:
 
 
 
-<h3><a name="rationale.constexpr">4.12. Interaction with <code>constexpr</code> functions</a></h3>
+<h3><a name="rationale.constexpr">7.12. Interaction with <code>constexpr</code> functions</a></h3>
 
 
 <p> During core constant expression evaluation in <em>Check_and_abort</em>
@@ -1516,7 +1523,7 @@ public:
 
 
 
-<h3><a name="rat.sec">4.13. Unimplementable security restrictions
+<h3><a name="rat.sec">7.13. Unimplementable security restrictions
     <span class="link">{rat.sec}</span></a></h3>
 
 
@@ -1531,7 +1538,7 @@ public:
 
 
 
-<h3><a name="rationale.security">4.14. No placeholder syntax for "meta-annotations" on contract annotations</a></h3>
+<h3><a name="rationale.security">7.14. No placeholder syntax for "meta-annotations" on contract annotations</a></h3>
 
 
 <p> It is clear that at some point there will have to be a way to annotate contract annotations with additional information
@@ -1551,9 +1558,30 @@ public:
     semantics than in the future revisions of C++. This silent change of semantics is unacceptable. For this reason, we do not
     propose the placeholder syntax for meta-annotations.</p>
 
+<p>We would end up in the situation, where the same program compiles on both older and newer contract support
+    frameworks, but has different semantics. Consider the
+    following program, with possible future extensions:
+    </p>
+
+<pre>
+void f(const char* s)
+  [[pre{axiom}: is_null_terminated(s)]]; <em>// name must not odr-used</em>
+
+bool binary_search(container&lt;Val&gt;&amp; c, Val const&amp; v)
+  [[pre{audit}: is_sorted(c)]];          <em>// must not be evaluated</em>
+
+bool foo(int i)
+  [[pre{review}: i &gt;= 0]];               <em>// must not abort</em>
+
+bool bar(int i)
+  [[pre{default}: i &gt;= 0]];              <em>// must evaluate and abort</em>
+</pre>
+
+<p> No single semantic that doesn't understand the additional syntax
+    can accommodate these expectations.</p>
 
 
-<h3><a name="rationale.interleaving">4.15. Interleaving preconditions and postconditions</a></h3>
+<h3><a name="rationale.interleaving">7.15. Interleaving preconditions and postconditions</a></h3>
 
 
 <p>This proposal allows to declare preconditions and postconditions in arbitrary order:</p>
@@ -1585,7 +1613,7 @@ public:
 
 
 
-<h3><a name="rationale.abort_or_term">4.16. <code>abort()</code> vs <code>terminate()</code></a></h3>
+<h3><a name="rationale.abort_or_term">7.16. <code>abort()</code> vs <code>terminate()</code></a></h3>
 
 <p> In this proposal, throwing from the predicate calls <code>std::terminate()</code> while a failed runtime check
     calls <code>std::abort()</code>. (We simply forbid the implementations
@@ -1604,7 +1632,7 @@ public:
 
 
 
-<h3><a name="rationale.assert_statement">4.17. <code>[[assert:]]</code> is not an expression</a></h3>
+<h3><a name="rationale.assert_statement">7.17. <code>[[assert:]]</code> is not an expression</a></h3>
 
 
 <p> In this proposal <code>[[assert:]]</code> can only appertain to a null statement, which effectively makes it a statement,
@@ -1622,7 +1650,7 @@ public:
 
 
 
-<h3><a name="rat.cbo">4.18 Contract-based optimizations
+<h3><a name="rat.cbo">7.18 Contract-based optimizations
     <span class="link">{rat.cbo}</span></a></h3>
 
 
@@ -1643,7 +1671,7 @@ public:
 <p> In fact, this proposal indirectly allows the programmer to achieve the same
     effect, provided that the compiler vendor provides the necessary parts.
     This proposal says that what happens in response to contract violation is
-    implementation defined. a conforming implementation may allow the programmer
+    implementation defined. A conforming implementation may allow the programmer
     to install a callback to be called on such occasion (a contract violation
     handler). The programmer may then choose to put <code>__builtin_unreachable()</code>
     inside the handler. The implementation then would have to guarantee that
@@ -1651,62 +1679,11 @@ public:
 
 <p> This should not be alarming to people focused on safety, because the above
     scenario requires the usage of <code>__builtin_unreachable()</code>, which
-    is easily detectable through simple mechanical checks, and non-conforming.
+    is easily detectable through simple mechanical checks, and cannot be installed at runtime.
     </p>
 
 
-
-
-<h3><a name="rat.fut">4.19 Why no future-proof syntax
-    <span class="link">{rat.fut}</span></a></h3>
-
-
-<p> The future updates to the contract support framework will surely require
-    a way to annotate correctness specifiers with some meta-information,
-    such as <code>audit</code> for checks deemed expensive, or
-    <code>axiom</code> for checks considered inexpressible, or
-    <code>new</code>/<code>review</code> for checks where aborting the
-    program is inappropriate.</p>
-
-<p> While this is out of scope for the MVP, one could expect that the MVP
-    comes with a syntax that allows for expressing these annotations,
-    but without assigning any semantics with them.
-    This way a fully-featured contract support framework future revisions
-    of C++ would still compiled in earlier versions of C++,
-    containing only the MVP, with possibly different semantics.</p>
-
-<p> We discard this possibility for the following reasons. First, the design
-    of syntax takes time, whereas we aim at delivering relatively fast.
-    If we don't make it for C++23, the re will be no value added by the
-    additional future-proof syntax. Second, in order to design a syntax
-    for a feature, you have to design the feature to a certain extent.
-    This, again, works against the design of delivering something small
-    fast. Third, while we can deliver a future-proof syntax, we cannot
-    deliver future-proof semantics. We would end up in the situation,
-    where the same program compiles on older and newer contract support
-    frameworks, but does something else in either of them. Consider the
-    following program, with possible future extensions:
-    </p>
-
-<pre>
-void f(const char* s)
-  [[pre{axiom}: is_null_terminated(s)]]; <em>// name must not odr-used</em>
-
-bool binary_search(container&lt;Val&gt;&amp; c, Val const&amp; v)
-  [[pre{audit}: is_sorted(c)]];          <em>// must not be evaluated</em>
-
-bool foo(int i)
-  [[pre{review}: i &gt;= 0]];               <em>// must not abort</em>
-
-bool bar(int i)
-  [[pre{default}: i &gt;= 0]];              <em>// must evaluate and abort</em>
-</pre>
-
-<p> No single semantics that doesn't understand the additional syntax
-    can accommodate these expectations.</p>
-
-
-<h2><a name="fut">5. Future compatibility
+<h2><a name="fut">8. Future compatibility
     <span class="link">{fut}</span></a></h2>
 
 
@@ -1732,7 +1709,7 @@ bool bar(int i)
 
 <p> In the first case, the application of the "continue" semantics is not a default behavior, and would require that
     a person who assembles the program instructs the compiler to use the special behavior. This can be added in the future
-    as a third mode of translating the source code with contract annotations (in addition to "Ignore" and "Check_and_abort").
+    as a third mode of translating the source code with contract annotations (in addition to <em>Ignore</em> and <em>Check_and_abort</em>).
     </p>
 
 <p> In the second case, there is a need to discriminate the newly added
@@ -1741,7 +1718,7 @@ bool bar(int i)
 
 <pre>int f(int * p)
   [[pre: p]]            <em>// stable annotation </em>
-  [[pre: *p &gt; 0; new]]  <em>// new annotation </em>
+  [[pre: *p &gt; 0; <strong>new</strong>]]  <em>// new annotation </em>
 ;</pre>
 
 <p> This can be added in the future by introducing a new syntax for the
@@ -1770,6 +1747,8 @@ bool bar(int i)
     (but they can still be turned into <code>std::terminate()</code> when <code>noexcept</code> functions are executed in unit-test programs).
     </p>
 
+<p>It is also possible to do negative testing of preconditions and postconditions by offering a set of reflection features tailored to that eventuality, without even running the function. A strawman proposal could be <code>std::are_preconditions_satisfied(f, x, y, z) -> bool</code>.</p>
+
 <p> This might look like a lot of modes of translation, but it should be kept in mind that the perspective of a person that looks
     at the code will not have modes: a declaration starting with <code>[[pre:</code> is always a precondition: something that
     evaluates to <code>true</code> in correct programs. The modes will be visible only to the person assembling the program,
@@ -1788,23 +1767,23 @@ bool bar(int i)
 
 
 
-<h3><a name="fut.old">5.1. Capturing state on function entry
+<h3><a name="fut.old">8.1. Capturing state on function entry
     <span class="link">{fut.old}</span></a></h3>
 
 
 
-<p> It is sometimes desired to express in the postcondition how the state
+<p> It is sometimes desirable to express in the postcondition how the state
     of the program upon return from the function is different from the state
     that the program had when the function was entered. One notable example
-    of this, is when we want to check that after a successful
-    <code>push_back</code> the size of the sequence container upon return is
+    of this is when we want to check that after a successful
+    <code>push_back</code>, the size of the sequence container upon return is
     greater by one than the size of the container upon function entry.
     However, by the time the precondition is evaluated, the previous state of
     the container is no more. We would have to make a <em>copy</em> of the
     portions of the program state that would be later inspected in the
     postcondition.</p>
 
-<p> There are at least two ways to express this. One is to introduce even more
+<p> There could be at least two ways to express this. One is to introduce even more
     names in the postcondition declaration, and use a syntax similar to the
     one used in lambda-captures:</p>
 
@@ -1846,17 +1825,17 @@ ForwardIt find(ForwardIt first, ForwardIt last, const T&amp; value)
     </p>
 
 
-<h2><a name="ope">6. Open issues
+<h2><a name="ope">9. Open issues
     <span class="link">{ope}</span></a></h2>
 
-<h3><a name="ope.syn">6.1. Syntax for introducing names in postconditions
+<h3><a name="ope.syn">9.1. Syntax for introducing names in postconditions
     <span class="link">{ope.syn}</span></a></h3>
 
 <p> It has been suggested that postconditions could have a better syntax for
     introducing the name of the returned value.
     Any such exploration of syntactic space should take into account that
     postconditions might need to introduce more names, as described in section
-    <a href="#fut.old">{fut.old}</a>""
+    <a href="#fut.old">{fut.old}</a>.
     </p>
 
 <pre>int f(int&amp; i, array&lt;int, 8&gt;&amp; arr)
@@ -2348,10 +2327,10 @@ or static storage duration are executed. Functions passed to <code>atexit()</cod
 
 <p> 8.
 
-In translation mode <em>enforce</em> all correctness annotation tests are enforced. In translation mode <em>ignore</em>
+In translation mode <em>enforce</em> all correctness annotation tests are enforced. In translation mode <em>Ignore</em>
  during constant evaluation (7.7) it is implementation-defined whether
 correctness annotation tests are ignored or enforced. In all other
-situations in <em>ignore</em> translation mode all correctness annotation tests are ignored.
+situations in <em>Ignore</em> translation mode all correctness annotation tests are ignored.
 
 </p>
 
