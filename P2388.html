@@ -448,7 +448,7 @@ befriended functions.
 
 
 
-<p> In addition to the syntax of contract annotation, this proposal includes the facility that uses them:
+<p> In addition to the grammar of contract annotations, this proposal includes the facility that uses them:
     the ability to check them at runtime, and stop the program if the check fails.
 
 <pre>int fun(int i)
@@ -465,7 +465,7 @@ int main()
 
 <p> Running this program can have two different effects, depending on whether we enable
     the generation of runtime-checks. If we don't, the program will output "hello"
-    and exit 0; but if if we enable them, this program will exit via
+    and exit 0; but if we enable them, this program will exit via
     <code>std::abort()</code> before printing "hello".
 
 <p> <code>[[assert:</code> <em>Pred</em><code>]]</code> is a correctness annotation:
