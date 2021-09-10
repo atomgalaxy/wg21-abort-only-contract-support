@@ -53,10 +53,10 @@ td { text-align: left;  padding-left: 0.4em; border: none;  padding-right: 0.4em
 
 <table class="header"><tbody>
   <tr>
-    <th>Document number:&nbsp;&nbsp;</th><th> </th><td>P2388R1</td>
+    <th>Document number:&nbsp;&nbsp;</th><th> </th><td>D2388R2</td>
   </tr>
   <tr>
-    <th>Date:&nbsp;&nbsp;</th><th> </th><td>2021-08-14</td>
+    <th>Date:&nbsp;&nbsp;</th><th> </th><td>2021-09-10</td>
   </tr>
   <tr>
     <th>Audience:&nbsp;&nbsp;</th><th> </th><td>SG21</td>
@@ -128,6 +128,14 @@ runtime-check contract annotations in core constant expressions even in
   <li>Added an open issue: alternate postcondition syntax.</li>
   <li>Expanded the design details and rationale section, based on feedback from SG21.</li>
 </ol>
+
+<ol>
+  <li>Clarified that declaring same function in two files with different contract
+      annotations is ill-formed, no diagnostic required.</li>
+</ol>
+
+<h3><a name="rev.r02">0.2. R1 → R2<span class="link">{rev.r02}</span></a></h3>
+
 
 <h2><a name="term">1. Terminology <span class="link">{term}</span></a></h3>
 
@@ -203,7 +211,7 @@ int select(int i, int j)   <em>// the definition</em>
 <h3>Name lookup in pre-/post-conditions</h3>
 
 <p> Name lookup for preconditions and postconditions is performed as in the trailing return type.
-  
+
 <h3>Access control</h3>
 
 <p>
@@ -910,7 +918,7 @@ struct Deriv : Base
     [[pre: i &gt;= 0]]
     [[post r: r &gt;= 0]]
   {
-    return fun(int i);
+    return fun_wide(int i);
   }
 };
 </pre>
@@ -1021,27 +1029,13 @@ int main()
     <li>If such incompatible declarations occur in the program, it is ill-formed, no diagnostic required (IF-NDR).</li>
     <li>It is ok to have such incompatible declarations as long as the function is not called. If it is, the behavior is undefined (UB).</li>
     <li>Allow calling such function, but make it unspecified which set
-of pre-/postconditions, or both, is called in Abort_and_continue mode.</li>
+of pre-/postconditions, or both, is called in <em>Check_and_abort</em> mode.</li>
 </ol>
 
-<p> We choose option 2 (undefined behavior). It makes more programs well formed than option 1.
-    We do not go with option 3 in order to keep consistency with static analysis:
-    if the program is correct (no UB, no IF-NDR) runtime checks are compatible with
-    static analysis results.
-    </p>
+<p> We choose option 1, because this most clearly reflects what such situation
+    is: simply having a function with two different sets of contract annotations
+    is an error, even if this error cannot be diagnosed by the implementation. </p>
 
-<p> While option 3 opens no new undefined behavior (either UB or IF-NDR),
-    it would make the runtime checks behave in an incompatible way with
-    static analysis. We have to know what set of contract annotations
-    a function has. The answer cannot be "it depends on which file you
-    are compiling".
-    </p>
-
-<p> For a similar reason we do not go with option 2, even though option 1
-    leaves fewer situations undefined. Simply having a function with two
-    different sets of contract annotations is an error, even if this error
-    cannot be diagnosed by the implementation.
-    </p>
 
 
 
@@ -1404,7 +1398,7 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
 
 <p> Allowing the access to protected and private members enables a practical usage scheme.
     In general, function precondition is something that cannot be fully expressed as C++ expression.
-    Implementer choose how much of the function precondition they want to check. They may choose
+    The implementers choose how much of the function precondition they want to check. They may choose
     to check some parts of the precondition by accessing private members that they do not want
     to expose to the users, for instance, because the private implementation may change over time
     or under configuration:
@@ -1497,7 +1491,7 @@ public:
 <p> Also, there exist referentially transparent functions that do not
     mark their reference arguments as <code>const</code>. While programmers are
     often advised to mark any functions that do not modify their
-    arguments by contract as <code>const</code>, this is just and device, and does
+    arguments by contract as <code>const</code>, this is just and advice, and does
     not have to be followed. And it is not clear if such functions
     should be excluded from contract predicates.
     </p>
@@ -2509,6 +2503,8 @@ specialization are independent of those of the primary template.— <i>end note<
 <p>Ville Voutilainen offered numerous useful suggestions to improve the quality of the paper.</p>
 
 <p>John McFarlane offered useful suggestions that improved the quality of the paper.</p>
+
+<p>Henry Miller reviewed the document and offered corrections.</p>
 
 
 <h2><a name="ref">9. References
