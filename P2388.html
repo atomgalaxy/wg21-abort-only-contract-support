@@ -132,10 +132,11 @@ runtime-check contract annotations in core constant expressions even in
 
 
 <h3><a name="rev.r02">0.2. R1 → R2<span class="link">{rev.r02}</span></a></h3>
-
 <ol>
   <li>Clarified that declaring same function in two files with different contract
       annotations is ill-formed, no diagnostic required.</li>
+  <li>Extended the discussion on non-reference function arguments in postconditions
+      (section <a href="#rat.arg">{rat.arg}</a>) based on the feedback from SG14.</li>
 </ol>
 
 
@@ -631,6 +632,27 @@ auto get_digit()
   <li>The generated number will fall between the limits that the user passed.</li>
 </ul>
 
+<p> This expectation can be reflected by the following assertion in the code
+    that uses the above function <code>generate()</code>:</p>
+
+<pre>
+int main()
+{
+  int l = 1;
+  int h = 100;
+  int m = generate(l, h);
+  [[assert: l &lt;= m &amp;&amp; m &lt;= h]];
+}
+</pre>
+
+<p> However, this is not what the runtime postcondition test will check in case
+    the values of objects <code>lo</code> and <code>hi</code> have been modified
+    inside function <code>generate()</code>.
+
+<p> In order to prevent this situation, we make it ill-formed when a postcondition
+    references a function non-reference argument, and this argument is not declared
+    <code>const</code> in the funciton definition.</p>
+
 <p> The postcondition needs to have access to the returned value, so it is
     called after the function has initialized it. In order for
     the postcondition to check the condition that the caller expects, we have to
@@ -638,6 +660,11 @@ auto get_digit()
     arguments. In order to achieve that we require that non-reference function
     arguments referenced in the postcondition must be declared const in function
     definition:</p>
+
+<pre>int generate(int lo, int hi) <em>// OK: not a definition</em>
+  [[pre lo &lt;= hi]]
+  [[post r: lo &lt;= r &amp;&amp; r &lt;= hi]];
+</pre>
 
 <pre>int generate(int lo, int hi) <em>// error: hi and lo not const</em>
 {
@@ -650,19 +677,22 @@ int generate(const int lo, const int hi) <em>// OK</em>
 }
 </pre>
 
-<p> This may have the effect that if the function argument
-    is returned from the function, the added <code>const</code>
-    will change the implicit move into a copy, which may add an
-    overhead, and may make the program ill-formed, if the type
-    is not copyable. However, this will not happen behind the
-    programmer's back. the programmer is first informed
-    (in form of an error message) that the argument has to be
-    declared <code>const</code>. It will be the programmer's
-    decision to make this change. An alternative decision might
-    be to not declare postcondition annotations on functions
-    that cannot be rewritten so that they take their
-    postcondition-referenced arguments as <code>const</code>.
-    </p>
+<pre>int generate(int&amp; lo, int&amp; hi) <em>// OK: hi and lo are references</em>
+  [[pre lo &lt;= hi]]
+  [[post r: lo &lt;= r &amp;&amp; r &lt;= hi]]
+{
+  return lo;
+}
+</pre>
+
+
+<p> If you get an error about the postcondition referring to non-<code>const</code>
+    non-reference function parameters, you can:</p>
+
+<ol>
+  <li>Drop the postcondition declaration.</li>
+  <li>Declare the function parameter as <code>const</code>.</li>
+</ol>
 
 <p> Another way to put this is that postconditions referring
     to non-reference function arguments make these arguments
@@ -670,15 +700,9 @@ int generate(const int lo, const int hi) <em>// OK</em>
     to use it at will.
     </p>
 
-<p>This restriction does not apply to references:</p>
-
-<pre>int generate(int&amp; lo, int&amp; hi) <em>// OK</em>
-  [[pre lo &lt;= hi]]
-  [[post r: lo &lt;= r &amp;&amp; r &lt;= hi]]
-{
-  return lo;
-}
-</pre>
+<p> This restriction does not apply to references: in case of reference
+    arguments it is clear to the caller that the objects the caller sees
+    can be modified before the function finishes.</p>
 
 <p> Pointers are values, so when they are passed by value, they are subject to
     the same constraints as other types passed by value.</p>
@@ -1041,7 +1065,8 @@ of pre-/postconditions, or both, is called in <em>Check_and_abort</em> mode.</li
 
 
 
-<h3><a name="rat.arg">7.3. Why require <code>const</code> for non-reference args?
+<h3><a name="rat.arg">7.3. Why is referring to non-<code>const</code> non-reference
+     funciton arguments in postconditions ill-formed?
     <span class="link">{rat.arg}</span></a></h3>
 
 
@@ -1105,8 +1130,7 @@ int generate(int lo, int hi)
 <p> This is how humans will read this declaration; and this is how the tools
     (like static analyzers) will read this declaration. So, in order for both
     tools and the C++ runtime checks to have the same meaning, we have to
-    exclude some otherwise valid implementations of the function. The easiest
-    way is to require that these parameters be visibly <code>const</code>.
+    exclude some otherwise valid implementations of the function.
 
 <p> A similar problem, albeit more difficult to spot, is when the function
     argument is implicitly moved from:</p>
@@ -1125,16 +1149,15 @@ string forward(string str) <em>// disallowed in our proposal</em>
 }             <em>// postcondition reads the moved-from state</em>
 </pre>
 
-<p> If we don't require the argument to be <code>const</code> we end up with the
+<p> If we allow this to compile in <em>Check_and_abort</em> mode, we end up with the
     postcondition reading the moved-from state. A programmer may not be even aware
-    that a move is taking place. Adding <code>const</code> prevents
-    the move.</p>
+    that a move is taking place. We prefer a compiler error to Undefined Behavior
+    here. The programmer always has an option to fix that, either by dropping
+    the postcondition or declaring the function argument <code>const</code>.</p>
 
 <h3> Why do we require it only for non-reference arguments?</h3>
 
-<p> First, there is no
-    way to require it for reference arguments: they cannot be <code>const</code>.
-    Second, there is no need to. Reference function arguments clearly indicate
+<p> There is no need to. Reference function arguments clearly indicate
     in the declaration that we are interested in modifying the objects that the
     caller sees. In fact this may be the desire of the caller to have the
     called function modify these objects, and this can even be reflected in the
@@ -1183,9 +1206,7 @@ public:
     when you add a postcondition to a function declaration, it can cause
     the definition of the function to be come ill-formed. Adding <code>const</code>
     may not suffice, because the implementation might be modifying function
-    parameters.</p>
-
-<p> There are some combinations of types and functions for which an alternative
+    parameters. There are some combinations of types and functions for which an alternative
     implementation may not exist if we make function parameters <code>const</code>.
     Consider the following example by Ville Voutilainen:</p>
 
@@ -1199,6 +1220,11 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
 </pre>
 
 <p> For such cases, programmers will not be able to declare a postcondition.</p>
+
+<p> The positive part of this proposal is that you get an explicit error
+    rather than a possibly surprising runtime behavior.</p>
+
+<h3>Other options</h3>
 
 <p> Other options for solving non-reference arguments in postconditions have
     been considered. C++20 allowed them, but called it undefined behavior if
@@ -1214,8 +1240,8 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
 
 <p> Another option would be to, rather than requiring the programmer to manually
     type <code>const</code> on function arguments, make these arguments implicitly
-    const. This spares some typing, but has downsides. It is not as future proof
-    as the proposed solution: the syntax is well formed with well defined semantics,
+    <code>const</code>. This spares some typing, but has downsides. It is not as
+    future proof as the proposed solution: the syntax is well formed with well defined semantics,
     so we cannot change it in the future. Second, this alternative can cause
     confusion. When an argument is changed implicitly to <code>const</code>,
     overload resolution starts selecting different overloads, and the programmer
@@ -1229,12 +1255,29 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
     </p>
 
 <p> Another option: silently make a copy of every non-reference parameter
-    referenced in the postcondition. this copy would be only visible to the
-    postcondition, so there is no way a function can possibly change it.
-    While attractive, this would require making silent copies. This may not be
-    satisfactory if a type is expensive to copy, or simply non-copyable,
-    and is a bad trade-off in situations where the function does not modify
-    the parameter anyway. It is a possible future opt-in extension, described
+    referenced in the postcondition in <em>Check_and_abort</em> mode.
+    This copy would be only visible to the postcondition, so there is no way a
+    function can possibly change it.</p>
+
+<p> While attractive, this has certain disadvantages.</p>
+
+<ol>
+<li>This would require making silent copies in <em>Check_and_abort</em> mode.
+    This may not be satisfactory if a type is expensive to copy, or simply
+    non-copyable, and is a bad trade-off in situations where the function does
+    not modify the parameter anyway.</li>
+<li>This would create a situation where a program compiles
+    in <em>Ignore</em> mode, but stops compiling in the moment we switch to
+    <em>Check_and_abort</em> mode (because some types are non-copyable). This is
+    against one of our design goals: chnging a mode cannot make a program fail
+    to compile.</li>
+<li>Making a copy is still not sufficient a solution for types &mdash;
+    like <code>Book</code> in the example above &mdash; that do not correctly
+    implement value semantics, and modifying a copy causes the modification in
+    the original.</li>
+</ol>
+
+<p> It is, however, a possible future opt-in extension, as described
     in section <a href="#fut.old">{fut.old}</a>.
     </p>
 
@@ -1242,6 +1285,19 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
     proposal. This will however make the same problem reappear
     once we try to add postconditions in the future.
     </p>
+
+<p> It should be kept in mind that making the situation with non-reference arguments
+    ill-formed in the MVP is a good starting point for the future extensions:
+    in the future this could be extended to most of the above alternatives.</p>
+
+<p> The D programming language, which has quite a similar model to C++ has a
+    similar problem with referencing non-<code>const</code> arguments in
+    postconditions. However, it does not impose any constraints on the funciton
+    arguments. As a result, postcondition runtime checks give counterintuitive
+    results, as can bee seen in this Compiler Explorer example:
+    <a href="https://d.godbolt.org/z/8xr1oqdq5">https://d.godbolt.org/z/8xr1oqdq5</a>.
+    </p>
+
 
 <h3><a name="rat.con">7.4. Why disallow continuation (for now)
     <span class="link">{rat.con}</span></a></h3>
