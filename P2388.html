@@ -136,7 +136,9 @@ runtime-check contract annotations in core constant expressions even in
   <li>Clarified that declaring same function in two files with different contract
       annotations is ill-formed, no diagnostic required.</li>
   <li>Extended the discussion on non-reference function arguments in postconditions
-      (section <a href="#rat.arg">{rat.arg}</a>) based on the feedback from SG14.</li>
+      (section <a href="#rat.arg">{rat.arg}</a>) based on the feedback from SG14; in particular,
+      listed more alternative solutions.</li>
+  <li>Added a feature-test macro.</li>
 </ol>
 
 
@@ -1276,6 +1278,14 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
     implement value semantics, and modifying a copy causes the modification in
     the original.</li>
 </ol>
+
+<p> Another option is a variant of the above: silently make a copy of a
+    postcondition-referenced argument in <em>Check_and_abort</em> mode, and in
+    <em>Ignore</em> mode fail to compile if this object's type is not copyable.
+    This removes the compile-time surprise when switching between modes; but
+    it does not remove the other two problems: unexpected copies and problems
+    with types that do not have value semantics.
+    </p>
 
 <p> It is, however, a possible future opt-in extension, as described
     in section <a href="#fut.old">{fut.old}</a>.
@@ -2539,7 +2549,14 @@ specialization are independent of those of the primary template.— <i>end note<
 </blockquote>
 
 
+<p> Add a new entry to the [tab:cpp.predefined.ft] in table [cpp.predefined]:</p>
 
+<blockquote class="std">
+<table>
+<tr><th>Macro name</th><th>Value</th></tr>
+<tr><td><code><ins>__cpp_contracts</ins></code></td><td><ins>XXXXYYL</ins></td></tr>
+</table>
+</blockquote>
 
 
 
