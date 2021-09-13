@@ -139,6 +139,8 @@ runtime-check contract annotations in core constant expressions even in
       (section <a href="#rat.arg">{rat.arg}</a>) based on the feedback from SG14; in particular,
       listed more alternative solutions.</li>
   <li>Added a feature-test macro.</li>
+  <li>Described the interaction with <code>std::unreachable()</code>.</li>
+  <li>Added a discussion of UB-sanitizers (section <a href="#des.san">{des.san}</a>).</li>
 </ol>
 
 
@@ -961,6 +963,53 @@ struct Deriv : Base
     as long as it does not obtain a negative number as input. A postcondition
     can never be treated in isolation from the function's precondition.
     </p>
+
+
+
+<h3><a name="des.san">6.8. Interaction with UB-sanitizers and similar tools
+    <span class="link">{des.san}</span></a></h3>
+
+
+<p> First, this proposal allows programmers to define what is considered a bug
+    in their program; therefore tools like sanitizers can insert defensive
+    checks based on correctness annotations, and report them in a way that is
+    uniform with how UB (such as null pointer dereference) is reported. Such
+    insertions are conformant with what we allow in <em>Check_and_abort</em>
+    mode, as long as the program terminates afterwards.</p>
+
+<p> Second, if:</p>
+
+<ul>
+  <li>your compiler provides an intrinsic such as
+      <code>__builtin_unreachable()</code>, and</li>
+  <li>your UB-sanitizer understands and reports reaching
+      <code>__builtin_unreachable()</code>, and</li>
+  <li>your contracts-enabled compiler allows you to install a custom contract
+      violation handler,</li>
+</ul>
+
+<p> then you can put <code>__builtin_unreachable()</code> inside your contract
+    violation handler. This way old UB-sanitizers can report on all declared
+    contract violations, and no special contract support has to be implemented
+    inside the sanitizers.</p>
+
+<p> This proposal interacts with
+    <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0627r3.pdf">[P0627R3]</a>,
+    which adds function <code>std::unreachable()</code>, which could be used
+    for the same purpose. However, the specification in <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0627r3.pdf">[P0627R3]</a>
+    allows the following implementation:</p>
+
+<pre>
+[[noreturn]] void unreachable()
+  [[pre: false]] <em>// never satisfied</em>
+{}
+</pre>
+
+<p> If this implementation was used in combination with the above suggestion to
+    put <code>std::unreachable()</code> in a custom contract violation handler,
+    this would cause an infinite recursion. Therefore, this proposal disallows
+    the implementaitons to put contract annotations on <code>std::unreachable()</code>,
+    if it is added.</p>
 
 
 
@@ -1918,7 +1967,7 @@ ForwardIt find(ForwardIt first, ForwardIt last, const T&amp; value)
 
 
 
-<h2><a name="wor">7. Wording <span class="link">{wor}</span></a></h2>
+<h2><a name="wor">10. Wording <span class="link">{wor}</span></a></h2>
 
 
 
@@ -2559,10 +2608,22 @@ specialization are independent of those of the primary template.— <i>end note<
 </blockquote>
 
 
+<h3><a name="wor.unr">10.1. Optional wording if <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0627r3.pdf">[P0627]</a> is accepted
+    <span class="link">{wor.unr}</span></a></h3>
+
+<p> If <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0627r3.pdf">[P0627]</a> is accepted,
+    add the following to the specification of <code>unreachable()</code>.
+
+<blockquote class="stdins">
+<em>Remarks:</em> The declaration of this funcion shall not contain contract annotations.
+[<i>Note</i>: This ensures that this funciton can be used inside the contract violation
+handler (9.12.4.2). — <i>end note</i>]
+</blockquote>
 
 
 
-<h2><a name="ack">8. Acknowledgments
+
+<h2><a name="ack">11. Acknowledgments
     <span class="link">{ack}</span></a></h2>
 
 <p>Daveed Vandevoorde offered useful feedback on the syntax of contract annotations.</p>
@@ -2582,7 +2643,7 @@ specialization are independent of those of the primary template.— <i>end note<
 <p>Henry Miller reviewed the document and offered corrections.</p>
 
 
-<h2><a name="ref">9. References
+<h2><a name="ref">12. References
     <span class="link">{ref}</span></a></h2>
 
 <ul>
@@ -2674,6 +2735,9 @@ implementation-defined"<br>
   <li>[P2036R1] — Barry Revzin, "Change scope of lambda <em>trailing-return-type</em>"<br>
       (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2036r1.html">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2036r1.html</a>).
       </li>
+
+  <li>[P0627R3] — Melissa Mears, "Function to mark unreachable code"<br>
+      (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0627r3.pdf">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0627r3.pdf</a>).</li>
 
 </ul>
 
