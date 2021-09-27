@@ -53,10 +53,10 @@ td { text-align: left;  padding-left: 0.4em; border: none;  padding-right: 0.4em
 
 <table class="header"><tbody>
   <tr>
-    <th>Document number:&nbsp;&nbsp;</th><th> </th><td>P2388R2</td>
+    <th>Document number:&nbsp;&nbsp;</th><th> </th><td>D2388R3</td>
   </tr>
   <tr>
-    <th>Date:&nbsp;&nbsp;</th><th> </th><td>2021-09-14</td>
+    <th>Date:&nbsp;&nbsp;</th><th> </th><td>2021-09-28</td>
   </tr>
   <tr>
     <th>Audience:&nbsp;&nbsp;</th><th> </th><td>SG21</td>
@@ -132,6 +132,7 @@ runtime-check contract annotations in core constant expressions even in
 
 
 <h3><a name="rev.r02">0.2. R1 → R2<span class="link">{rev.r02}</span></a></h3>
+
 <ol>
   <li>Clarified that declaring same function in two files with different contract
       annotations is ill-formed, no diagnostic required.</li>
@@ -141,6 +142,16 @@ runtime-check contract annotations in core constant expressions even in
   <li>Added a feature-test macro.</li>
   <li>Described the interaction with <code>std::unreachable()</code>.</li>
   <li>Added a discussion of UB-sanitizers (section <a href="#des.san">{des.san}</a>).</li>
+</ol>
+
+
+<h3><a name="rev.r03">0.3. R2 → R3<span class="link">{rev.r03}</span></a></h3>
+
+<ol>
+  <li>Expanded the rationale for the choice of syntax in section <a href="#rat.att">{rat.att}</a>.
+      Discussed the concerns about confusion with attributes and the potential incompatibility
+      with the C programming language.
+      </li>
 </ol>
 
 
@@ -1017,10 +1028,34 @@ struct Deriv : Base
 
 
 
-<h3><a name="rat.att">7.1. Why not use attributes
+<h3><a name="rat.att">7.1. The choice of syntax
     <span class="link">{rat.att}</span></a></h3>
 
-<p> An alternative syntax for contract annotations would be to use attributes:</p>
+<p> The syntax that we propose uses the double square bracket notation, but because
+    we require a colon inside, it does not match the syntax of attributes, neither in C++
+    not in C. While the the specification differs slightly between C and C++,
+    they both agree that an <em>attribute-specifier</em> is a comma separated list
+    of attributes inside double square brackets, each attribute taking the form:
+    </p>
+
+<pre>
+<em>namespace-name</em>::<em>attribute-name</em>(<em>balanced-token-seq</em>)
+</pre>
+
+<p> Thus the notation that we propose:
+
+<pre>
+[[<em>identifier</em> <em>identifier<sub>opt</sub></em> : <em>balanced-token-seq</em>]]
+</pre>
+
+<p> Can never be recognized as an attribute based on the C or C++ specification.</p>
+
+<p> The two alternatives to consider for contract annotations would be:</p>
+
+<ol>
+    <li> Provide a very distinct syntax, using custom (potentially context-sensitive)
+         keywords.</li>
+    <li> Define contracts as 100%-compatible <em>attribute-specifiers</em>s:
 
 <pre><em>// not proposed</em>
 int f(int i)
@@ -1028,24 +1063,195 @@ int f(int i)
   [[post(r: r &gt;= 0)]];
 </pre>
 
-<p> We do not propose this for two reasons. One is social: we do not want to depart
-    from what the previous proposal settled upon and what EWG agreed to. Second is technical.
-    This syntax will not work for assertions in function bodies:</p>
+    </li>
+</ol>
 
-<pre>int f(int i)
-{
-  [[assert(i &gt;= 0)]]; <em>// interpreted as macro</em>
-  return i;
-}
-</pre>
+<h4><a name="rat.att.sqr">7.1.1. Why the square brackets</a></h4>
 
-<p> Here, the <code>assert</code> is interpreted as C macro and expanded, causing a compiler error.
-    This problem is not present when identifier <code>assert</code> is followed by a colon.</p>
+<p> Attributes in C and C++ have the property of "ignorability". It is expressed
+    directly in the C specification (<a
+    href="http://www.open-std.org/jtc1/sc22/wg14/www/docs/n2596.pdf">[P2182R1]</a>):</p>
 
-<p> This problem would disappear if we used some other name than <code>assert</code>. However,
-    name <code>assert</code> is a well established name, not only in C++, and abandoning it
+<blockquote>A strictly conforming program using a standard attribute remains
+   strictly conforming in the absence of that attribute.</blockquote>
+
+<p> Contract annotations have an analogous property with respect to bug-free
+    programs. If your contract annotations compile and never evaluate to
+    <code>false</code> in a running program, then you can remove the annotations
+    from your code and you will not observe any difference. The notion of being
+    "bug-free" now has a formal definition: a program is bug free when its
+    contract annotaitons never render value <code>false</code> for any inuput.
+    </p>
+
+<p> This notion of ignorability makes the contract annotations similar to
+    attributes. Therefore we believe that the double bracket syntax is justified.
+    However, strictly speaking, contract annotations are not attribute-specifiers.
+    </p>
+
+<p> Another reason is pragmatic. Adding new keywords is expensive, requires a lot
+    of creativity, and often results in solutions that feel compromised. Our
+    choice is further limited by the desire to use identifier <code>assert</code>
+    for representing assertions in function bodies. This precludes any solutions
+    that contain the sequence of tokens <code>assert&nbsp;(</code>, which would be
+    parsed as a macro.</p>
+
+
+<h4><a name="rat.att.att">7.1.2. Why not use attributes</a></h4>
+
+<p> One reason for not choosing the attribute syntax, already indicated above
+    is that <code>[[assert(pred)]]</code> would be interpretted as a macro
+    and render a compiler error. This problem would disappear if we used some
+    other name than <code>assert</code>. However, name <code>assert</code> is
+    a well established name, not only in C++, and abandoning it
     would make the learning curve unnecessarily steeper.
     </p>
+
+<p> The second reason is that the sqoare brackets do not indicate an <em>attribute</em>:
+    they indicate an <em>attribute-speciifier</em>, which is a sequence of
+    attributes. Treating contract annotaitons as attributes would allow users
+    to write things like:</p>
+
+<pre><em>// not proposed</em>
+int f(int i)
+  [[noreturn, gnu::fastcall, pre(i &gt;= 0)]];
+</pre>
+
+
+
+<h4><a name="rat.att.syn">7.1.3. Why not use contextual keywords</a></h4>
+
+
+<p> The proposed syntax, due to its similarity with attributes, sends a message
+    to programmers: these annotations can be ignored if your predicates are
+    well formed and they always evaluate to <code>true</code>.
+    </p>
+
+<p> The second reason is social: we do not want to depart
+    from what P0542-contracts settled upon and what EWG agreed to, which has 6+ years
+    of history, teaching and reference implementations.</p>
+
+<p> An alternate syntax might be possible, but the design is subject to a number
+    of concerns already mentioned. Also, providing a novel syntax would be incompatible
+    with our primary goal: to provide the ability to declare contract annotations
+    still in C++23. Experimenting with new syntax, waiting for a reference implementation
+    will surely make the process longer. While doing things fast can never be a primary goal,
+    there is also a risk of improving the design forever. An alternative syntax
+    should offer a clear and significant improvement over the current one. </p>
+
+
+
+<h4><a name="rat.att.too">7.1.4. Is the square bracket syntax not too close to attribute syntax?</a></h4>
+
+
+<p> A concern has been raised that the square bracket notation used for
+    contract annotations, even though not being an attribute-syntax, will be
+    confused with attributes. This can result in the following: <p>
+
+<ol>
+<li> Users will be led to believe that, as is the case for other attributes,
+     contract annotations will be freely ignored by the conforming implementations,
+     so there is no guarantee that the expressions in predicates will even be
+     checked for valid syntax. </li>
+<li> The C language has been specified with an attribute-parsing implementation
+     strategy in mind that just skips everything between tokens <code>[[</code>
+     and <code>]]</code>, and outputs a diagnostic message. Such implementation
+     would just skip the parsing of contract annotations, and compromise the
+     guarantee that expressions in contract annotaitons should be at minimum
+     checked for syntactic and type-system correctness. </li>
+<li> Contract annotations in function declarations appear in the position where
+     attributes that appertain to a function type would normally appear. Because
+     of the visual resemblence of contract annotaitons to attributes, people
+     will have the same expectations of contract attributes: that they should
+     appertain to a function type, and it is not clear if they do that. </li>
+</ol>
+
+<p> The first two concerns boil down to how much you can trust your compiler to
+    implement the desired check. This proposal requires that the compiler
+    implements at least one of the two modes: <em>Eval_and_abort</em> or
+    <em>No_eval</em>. In either case users should expect that their predicates
+    in contract annotations are syntax-checked. However, this is not generally
+    enforcable. The standard only requires that an implementation issues at least
+    one diagnostic for an ill-formed program, and that it producess a binary with
+    correct semantics for a well formed program (the standard does not mention the quality
+    of this diagnostic). However, it allows diagnostics
+    for well defined programs (this is how warnings work), as well as generating
+    a binary with implementaiton-defined semantics for ill-formed programs
+    (this is how language extensions work). So, if your implementaiton chooses
+    to skip anything between <code>[[</code> and <code>]]</code> and issue a diagnostic
+    "attribute ignored", it is conformant. If the predicate in your contract
+    annotation was well formed, an unsolicited diagnostic has been produced (legal),
+    and program compiles fine with no additional behavior, as you would expect
+    in <em>No_eval</em> mode. If your contract annotation contains an ill-formed
+    expression, the required diagnostic (albeit with confusing content) is produced,
+    and the binary that does something is generated (legal for ill-formed program).
+    So, there is no way to enforce the compiler to refuse to compile and produce
+    a binary for an ill-formed program.</p>
+
+<p> The same observation applies to features like concepts or
+    <code>static_assert</code>. However, this is not a problem in practice,
+    because we trust that the implementaitons will do what is intended. This
+    boils down to the QoI issue. If your compiler just skips contract
+    annotations, you know you cannot trust it for enforcing contracts. We could
+    not prevent the compiler from ignoring your annotations: even if they were
+    expressed with new keywords.
+    </p>
+
+<p> The reason that contract annotaitons expressed with double sqare bracket
+    syntax is particularly
+    subject to concerns, is that this approach to skipping anything between
+    <code>[[</code> and <code>]]</code> has been suggested as a plausible
+    implementation of a C compiler, following the informal, but apparently common, reasoning that anything between
+    <code>[[</code> and <code>]]</code> can be considered less important, secondary information.
+    The supporters of this view would naturally expect that contract annotations
+    do not use the double angle bracket syntax. While WG21 doe snot directly deal with
+    the C programming language, creating an unnecessary incompatibility with C,
+    (which plans to add contract support in the future) is a legitimate concern.
+    Before we consider switching to a different syntax, we would like to lerarn
+    if there exists an implementation
+    that actually makes use of the above view.
+    </p>
+
+<p> Addressing the third concern, the notion of appertaining to function type
+    is not understood well enough to be able to make definitive statements
+    if contract annotations apply to function types or to individual function
+    declarations. There are no standard attributes that appertain to function
+    type. We have non-standard ones, but because each of them has its own
+    implementaiton-defined semantics, no clear conclusion could be drawn from
+    them. For instance, Clang supports attribute <code>[[gnu::fastcall]]</code>
+    which appertains to function type, and affects the type system,
+    so that a function declared with with <code>[[gnu::fastcall]]</code> cannot
+    be cast to a funciton pointer declared without <code>[[gnu::fastcall]]</code>
+    and vice versa. But this behavior is speciffic to this single attribute,
+    and there is no way to draw a conclusion that the same should apply to any
+    attribute that appertains to function type. THere is nothing that prevents
+    a different attribute from appertaining to function type and not affecting
+    the type system at the same time.</p>
+
+<p> The following is illegal under our proposal:</p>
+
+<pre>
+<em>// not proposed</em>
+using DivFun = int(int num, int den) [[pre: den != 0]];
+</pre>
+
+<p> One could make the case that because this is illegal, contract annotations
+    do not appertain to function type. But because each attribute has its own
+    semantics, including its own specification of where it can appear and where not,
+    we again claim that this fits within what is allowed for an attribute
+    that appertains to function type.</p>
+
+<p> There is no stict criterion here, so we can only refer to an intuition,
+    and the intuition is inconclusive also: one could say that given the declaration:</p>
+
+<pre>
+int divide(int num, int den) [[pre: num != 0]];
+</pre>
+
+<p> The precondition appertains more to a function type, as in: "this is one of
+    those functions that disallow zero in the second parameter." Of course,
+    this reasoning only makes sense only if "appertain to" was a property of
+    contract annotations; but it is not, because "appertains to" is only defined
+    for attributes.</p>
 
 
 
@@ -2642,6 +2848,11 @@ handler (9.12.4.2). — <i>end note</i>]
 
 <p>Henry Miller reviewed the document and offered corrections.</p>
 
+<p>Aaron Ballman and Peter Brett provided important feedback about the potential
+   confusion with attribute syntax and semantics, especially in the context of
+   C compatimility.</p>
+
+
 
 <h2><a name="ref">12. References
     <span class="link">{ref}</span></a></h2>
@@ -2718,8 +2929,8 @@ handler (9.12.4.2). — <i>end note</i>]
       </li>
 
   <li>[P1769R0] — Ville Voutilainen, Richard Smith, "The «default»
-contract build-level and continuation-mode should be
-implementation-defined"<br>
+                  contract build-level and continuation-mode should be
+                  implementation-defined"<br>
       (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1769r0.html">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1769r0.html</a>).
       </li>
 
@@ -2730,6 +2941,12 @@ implementation-defined"<br>
   <li>[P2182R1] — Andrzej Krzemieński, Joshua Berne, Ryan McDougall,
       "Contract Support: Defining the Minimum Viable Feature Set" <br>
       (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2182r1.html">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2182r1.html</a>).
+      </li>
+
+  <li>[N2596] —
+      "Programming languages — C (working draft)" <br>
+      (<a href="http://www.open-std.org/jtc1/sc22/wg14/www/docs/n2596.pdf"
+        >http://www.open-std.org/jtc1/sc22/wg14/www/docs/n2596.pdf</a>).
       </li>
 
   <li>[P2036R1] — Barry Revzin, "Change scope of lambda <em>trailing-return-type</em>"<br>
