@@ -181,7 +181,18 @@ function "specification".)</dd>
 <dt>Contract annotation</dt>
 <dd>Declaration of a precondition or a postcondition or an assertion, such as <code>[[pre: i != 0]]</code> or <code>[[assert: x != y]]</code>.
     Contract annotations can express a subset of function specification.</dd>
+
+<dt>P0542-contracts</dt>
+<dd>The specification for contracts as described in
+    <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0542r5.html">[P0542R5]</a>
+    and later updated by
+    <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1344r1.md">[P1344R1]</a>
+    and
+    <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1323r2.html">[P1323R2]</a>.</dd>
 </dl>
+
+
+
 
 <h2><a name="ovr">2. Proposal <span class="link">{ovr}</span></a></h2>
 
@@ -1489,7 +1500,7 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
 <h3>Other options</h3>
 
 <p> Other options for solving non-reference arguments in postconditions have
-    been considered. C++20 allowed them, but called it undefined behavior if
+    been considered. P0542-contracts allow them, but call it undefined behavior if
     such parameter was modified during the evaluation of the function. This
     included the situation where the parameter was implicitly moved from.
     </p>
@@ -1849,7 +1860,7 @@ public:
     <span class="link">{rat.sec}</span></a></h3>
 
 
-<p> C++20 had wording "There should be no programmatic way of setting, modifying,
+<p> P0542-contracts has wording "There should be no programmatic way of setting, modifying,
     or querying the build level of a translation unit." Technically,
     we could add a similar requirement for the translation mode.</p>
 
@@ -2371,6 +2382,10 @@ the converted expression is called the <em>predicate</em> of the correctness ann
 
 </blockquote>
 
+<p class="editor">The requirement that the predicates are potenitally evaluated
+     follows from <a href="http://eel.is/c++draft/basic.def.odr#2"
+     >[basic.def.odr]/p2</a>, which says that any expression is potentially evaluated,
+     unless it is explicitly listed as unevaluated.</p>
 
 
 <p>Add a new section 9.12.4.2 Contract annotations [dcl.correct.anno]:</p>
@@ -2579,7 +2594,7 @@ in all translation units is conditionally-supported with implementation-defined 
 
 </blockquote>
 
-<p class="editor">C++20 had wording "There should be no programmatic way of
+<p class="editor">P0542-contracts have wording "There should be no programmatic way of
     setting, modifying, or querying the build level of a translation unit."
      We omit is as explained in section <a href="#rat.sec">{rat.sec}</a>.
   </p>
@@ -2932,6 +2947,12 @@ handler (9.12.4.2). — <i>end note</i>]
   <li>[P1606R0] — Joshua Berne, "Requirements for Contract Roles" <br>
       (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1606r0.pdf">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1606r0.pdf</a>).
       </li>
+
+  <li>[P1344R1] — Nathan Myers, "Pre/Post vs. Expects/Ensures" <br>
+      (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1344r1.md">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1344r1.md</a>).
+      </li>
+
+
 
   <li>[P1769R0] — Ville Voutilainen, Richard Smith, "The «default»
                   contract build-level and continuation-mode should be
