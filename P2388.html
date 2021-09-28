@@ -120,7 +120,7 @@ Minimum Viable Product (MVP) achieving the following goals:
 <ol>
   <li>Added the proposed wording.</li>
   <li>Added new design point: incompatible contract annotations in different translation units.</li>
-  <li>Added new design point: referencing value and rvalue references function arguments in postconditions.</li>
+  <li>Added new design point: referencing value and rvalue references function parameters in postconditions.</li>
   <li>Resolved open issue: objects are not treated as const in contract predicates.</li>
   <li>Resolved open issue: implementations may (but don't have to)
 runtime-check contract annotations in core constant expressions even in
@@ -136,7 +136,7 @@ runtime-check contract annotations in core constant expressions even in
 <ol>
   <li>Clarified that declaring same function in two files with different contract
       annotations is ill-formed, no diagnostic required.</li>
-  <li>Extended the discussion on non-reference function arguments in postconditions
+  <li>Extended the discussion on non-reference function parameters in postconditions
       (section <a href="#rat.arg">{rat.arg}</a>) based on the feedback from SG14; in particular,
       listed more alternative solutions.</li>
   <li>Added a feature-test macro.</li>
@@ -156,6 +156,16 @@ runtime-check contract annotations in core constant expressions even in
       and <em>No_eval</em>, in ordered to clearly suggest that they control the
       runtime evaluation of the predicates, rather than the checking of syntactic
       correctness at compile time.
+      </li>
+  <li>Fixed places where term "function argument" was used incorrectly instead of
+      "function parameter".
+      </li>
+  <li>Added an example in section <a href="#rat.att">{rat.arg}</a> to illustrate
+      an alternate solution with implicitly-<code>const</code> function parameters.
+      </li>
+  <li>Removed the normative encouragement for the violation handler to output
+      a message to the standard diagnostic output. This is to address security
+      concerns.
       </li>
 </ol>
 
@@ -547,7 +557,7 @@ int main()
 <p> <code>[[pre:</code> <em>Pred</em><code>]]</code> is <em>precondition</em>:
     it is another correctness annotation: one that appears in a function
     declaration. It says that whenever this function is called &mdash;
-    just after the function arguments have been initialized &mdash; the
+    just after the function parameters have been initialized &mdash; the
     predicate must <em>hold</em>, otherwise we have a bug.</p>
 
 <p> The static analyzer could determine that if function <code>get_count()</code>
@@ -643,7 +653,7 @@ auto get_digit()
 
 
 
-<h3><a name="des.arg">6.4. Function arguments in postconditions
+<h3><a name="des.arg">6.4. Function parameters in postconditions
     <span class="link">{des.arg}</span></a></h3>
 
 
@@ -681,15 +691,15 @@ int main()
     inside function <code>generate()</code>.
 
 <p> In order to prevent this situation, we make it ill-formed when a postcondition
-    references a function non-reference argument, and this argument is not declared
+    references a function non-reference parameter, and this parameter is not declared
     <code>const</code> in the funciton definition.</p>
 
 <p> The postcondition needs to have access to the returned value, so it is
     called after the function has initialized it. In order for
     the postcondition to check the condition that the caller expects, we have to
     make sure that the function has not modified the values of function
-    arguments. In order to achieve that we require that non-reference function
-    arguments referenced in the postcondition must be declared const in function
+    parameters. In order to achieve that we require that non-reference function
+    parameters referenced in the postcondition must be declared const in function
     definition:</p>
 
 <pre>int generate(int lo, int hi) <em>// OK: not a definition</em>
@@ -726,13 +736,13 @@ int generate(const int lo, const int hi) <em>// OK</em>
 </ol>
 
 <p> Another way to put this is that postconditions referring
-    to non-reference function arguments make these arguments
+    to non-reference function parameters make these parameters
     part of the interface: the function no longer has freedom
     to use it at will.
     </p>
 
 <p> This restriction does not apply to references: in case of reference
-    arguments it is clear to the caller that the objects the caller sees
+    parameters it is clear to the caller that the objects the caller sees
     can be modified before the function finishes.</p>
 
 <p> Pointers are values, so when they are passed by value, they are subject to
@@ -797,7 +807,7 @@ consume(produce());
     subexpression thereof affects the result of any other predicate or a
     subexpression thereof in the same test sequence. It is also
     undefined behavior if the evaluation of a predicate modifies the value
-    of function arguments, the returned value, or any other objects
+    of function parameters, the returned value, or any other objects
     odr-used by the predicate. Any other side effects are allowed and
     valid.</p>
 
@@ -1339,7 +1349,7 @@ of pre-/postconditions, or both, is called in <em>Eval_and_abort</em> mode.</li>
 
 
 <h3><a name="rat.arg">7.3. Why is referring to non-<code>const</code> non-reference
-     funciton arguments in postconditions ill-formed?
+     funciton parameters in postconditions ill-formed?
     <span class="link">{rat.arg}</span></a></h3>
 
 
@@ -1378,7 +1388,7 @@ int generate(int lo, int hi)
 </ul>
 
 <p> We could just followed the rule: postcondition is evaluated at the end of
-    the function, and whatever values function arguments have at that point,
+    the function, and whatever values function parameters have at that point,
     we read them. This would make the model for postconditions "simple", but
     it would give the semantic meaning to the postcondition that is clearly
     against the intent of the contract:</p>
@@ -1406,7 +1416,7 @@ int generate(int lo, int hi)
     exclude some otherwise valid implementations of the function.
 
 <p> A similar problem, albeit more difficult to spot, is when the function
-    argument is implicitly moved from:</p>
+    parameter is implicitly moved from:</p>
 
 <pre><em>// declaration:</em>
 
@@ -1426,11 +1436,11 @@ string forward(string str) <em>// disallowed in our proposal</em>
     postcondition reading the moved-from state. A programmer may not be even aware
     that a move is taking place. We prefer a compiler error to Undefined Behavior
     here. The programmer always has an option to fix that, either by dropping
-    the postcondition or declaring the function argument <code>const</code>.</p>
+    the postcondition or declaring the function parameter <code>const</code>.</p>
 
-<h3> Why do we require it only for non-reference arguments?</h3>
+<h3> Why do we require it only for non-reference parameters?</h3>
 
-<p> There is no need to. Reference function arguments clearly indicate
+<p> There is no need to. Reference function parameters clearly indicate
     in the declaration that we are interested in modifying the objects that the
     caller sees. In fact this may be the desire of the caller to have the
     called function modify these objects, and this can even be reflected in the
@@ -1499,7 +1509,7 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
 
 <h3>Other options</h3>
 
-<p> Other options for solving non-reference arguments in postconditions have
+<p> Other options for solving non-reference parameters in postconditions have
     been considered. P0542-contracts allow them, but call it undefined behavior if
     such parameter was modified during the evaluation of the function. This
     included the situation where the parameter was implicitly moved from.
@@ -1512,16 +1522,34 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
     is not possible.</p>
 
 <p> Another option would be to, rather than requiring the programmer to manually
-    type <code>const</code> on function arguments, make these arguments implicitly
-    <code>const</code>. This spares some typing, but has downsides. It is not as
+    type <code>const</code> on function parameters, make these parameters implicitly
+    <code>const</code>:
+    </p>
+
+<pre>
+int generate(int lo, int hi) <em>// OK</em>
+  [[pre lo &lt;= hi]]
+  [[post r: lo &lt;= r &amp;&amp; r &lt;= hi]]
+{
+  int result = lo;
+  while (++lo &lt;= hi) <em>// error: lo is implicitly const</em>
+  {
+    if (further())
+      ++result;
+  }
+  return result;
+}
+</pre>
+
+<p> This spares some typing, but has downsides. It is not as
     future proof as the proposed solution: the syntax is well formed with well defined semantics,
     so we cannot change it in the future. Second, this alternative can cause
-    confusion. When an argument is changed implicitly to <code>const</code>,
+    confusion. When an parameter is changed implicitly to <code>const</code>,
     overload resolution starts selecting different overloads, and the programmer
     cannot easily figure out why, as there is no <code>const</code> in sight.
     </p>
 
-<p> Another option: disallow postconditions to reference function arguments.
+<p> Another option: disallow postconditions to reference function parameters.
     This is possible, but the proposed solution is superior. Referencing
     non-const non-reference parameter is already an error; we just make it easier
     for people who can afford to put <code>const</code> in the definition.
@@ -1551,7 +1579,7 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
 </ol>
 
 <p> Another option is a variant of the above: silently make a copy of a
-    postcondition-referenced argument in <em>Eval_and_abort</em> mode, and in
+    postcondition-referenced parameter in <em>Eval_and_abort</em> mode, and in
     <em>No_eval</em> mode fail to compile if this object's type is not copyable.
     This removes the compile-time surprise when switching between modes; but
     it does not remove the other two problems: unexpected copies and problems
@@ -1567,14 +1595,14 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
     once we try to add postconditions in the future.
     </p>
 
-<p> It should be kept in mind that making the situation with non-reference arguments
+<p> It should be kept in mind that making the situation with non-reference parameters
     ill-formed in the MVP is a good starting point for the future extensions:
     in the future this could be extended to most of the above alternatives.</p>
 
 <p> The D programming language, which has quite a similar model to C++ has a
-    similar problem with referencing non-<code>const</code> arguments in
+    similar problem with referencing non-<code>const</code> parameters in
     postconditions. However, it does not impose any constraints on the funciton
-    arguments. As a result, postcondition runtime checks give counterintuitive
+    parameters. As a result, postcondition runtime checks give counterintuitive
     results, as can bee seen in this Compiler Explorer example:
     <a href="https://d.godbolt.org/z/8xr1oqdq5">https://d.godbolt.org/z/8xr1oqdq5</a>.
     </p>
@@ -1828,7 +1856,7 @@ public:
 };</pre>
 
 <p> Also, there exist referentially transparent functions that do not
-    mark their reference arguments as <code>const</code>. While programmers are
+    mark their reference parameters as <code>const</code>. While programmers are
     often advised to mark any functions that do not modify their
     arguments by contract as <code>const</code>, this is just and advice, and does
     not have to be followed. And it is not clear if such functions
@@ -2626,21 +2654,8 @@ The semantics of the contract violation handler are implementation defined.
 
 </p>
 
+
 <p> 5.
-
-<i>Recommended practice</i>: The contract violation handler should by
-default output to the stream buffer associated with the object
-<code>stderr</code>, declared in <code>&lt;cstdio&gt;</code> (29.13.1),
-the message containing the textual representation of the predicate and
-the location in the source code where the predicate was evaluated.
-For preconditions the source location should be
-that where the function containing the corresponding contract annotation
- was called. For postconditions, the source location should be inside
-the function definition.
-
-</p>
-
-<p> 6.
 
 [<i>Note</i>: The contract violation handler does not have to be a
 function with any linkage. An implementation may provide a way to
@@ -2655,14 +2670,14 @@ the behavior of the contract violation handler.  — <i>end note</i>]
   </p>
 
 <blockquote class="stdins">
-<p> 7.
+<p> 6.
 
 After the contract violation handler is executed, the program exits and an implementation-defined form of the status <em>unsuccessful termination</em> is returned.
 No destructors for objects of automatic, thread,
 or static storage duration are executed. Functions passed to <code>atexit()</code> (6.9.3.4) are not called.
 </p>
 
-<p> 8.
+<p> 7.
 
 In translation mode <em>enforce</em> all correctness annotation tests are enforced. In translation mode <em>ignore</em>
  during constant evaluation (7.7) it is implementation-defined whether
@@ -2671,14 +2686,14 @@ situations in <em>ignore</em> translation mode all correctness annotation tests 
 
 </p>
 
-<p> 9.
+<p> 8.
 
 If a correctness annotation test modifies the value of
 any object odr-used (6.3) in its predicate, the behavior is undefined.
 
 </p>
 
-<p>10.
+<p>9.
 Let <code>PRE</code> denote the basic precondition test sequence of a given function <code>f</code>.
 When performing enforced contract annotation tests, it is unspecified if <code>PRE</code> is performed one or two times.
 This is called a <em>precondition test sequence</em>.
@@ -2694,7 +2709,7 @@ body. — <i>end note</i>]
 </p>
 
 
-<p> 11.
+<p> 10.
 
 When the results of functions <code>fs</code> are used to initialize
 function arguments of a function <code>g</code>, the <em>combined test
@@ -2864,13 +2879,9 @@ handler (9.12.4.2). — <i>end note</i>]
 
 <p>Ville Voutilainen offered numerous useful suggestions to improve the quality of the paper.</p>
 
-<p>John McFarlane offered useful suggestions that improved the quality of the paper.</p>
-
-<p>Henry Miller reviewed the document and offered corrections.</p>
-
-<p>Aaron Ballman and Peter Brett provided important feedback about the potential
-   confusion with attribute syntax and semantics, especially in the context of
-   C compatimility.</p>
+<p>The following people also reviewed the proposal and offered suggestions,
+   corrections and improvements:
+   Aaron Ballman, Peter Brett, Ben Craig, Thomas Köppe, John McFarlane, Henry Miller. </p>
 
 
 
