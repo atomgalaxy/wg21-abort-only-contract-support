@@ -46,7 +46,7 @@ td { text-align: left;  padding-left: 0.4em; border: none;  padding-right: 0.4em
 
 </style>
 
-<title>Minimum Contract Support: either Ignore or Check_and_abort</title>
+<title>Minimum Contract Support: either No_eval or Eval_and_abort</title>
 
 </head>
 <body>
@@ -68,7 +68,7 @@ td { text-align: left;  padding-left: 0.4em; border: none;  padding-right: 0.4em
   </tr>
 </tbody></table>
 
-<h1>Minimum Contract Support: either <em>Ignore</em> or <em>Check_and_abort</em></h1>
+<h1>Minimum Contract Support: either <em>No_eval</em> or <em>Eval_and_abort</em></h1>
 
 <p>
 This paper proposes a minimal contract support framework for C++.
@@ -91,7 +91,7 @@ Minimum Viable Product (MVP) achieving the following goals:
   return transform(a, b);
 }</pre>
 
-<p>In <em>Check_and_abort</em> mode, this renders runtime code equivalent to:</p>
+<p>In <em>Eval_and_abort</em> mode, this renders runtime code equivalent to:</p>
 
 <pre>bool fun(int a, int b)
 {
@@ -109,7 +109,7 @@ Minimum Viable Product (MVP) achieving the following goals:
     to the stream buffer associated with the object <code>stderr</code> and <code>std::abort()</code> is called. If any exception is thrown during the evaluation of the predicate or the
     logging statement, <code>std::terminate()</code> is called.</p>
 
-<p>In <em>Ignore</em> mode, the code is rendered without calling the lambda (thus odr-using the predicate, but not evaluating it).</p>
+<p>In <em>No_eval</em> mode, the code is rendered without calling the lambda (thus odr-using the predicate, but not evaluating it).</p>
 
 
 <h2><a name="rev">0. Revision history <span class="link">{rev}</span></a></h2>
@@ -124,7 +124,7 @@ Minimum Viable Product (MVP) achieving the following goals:
   <li>Resolved open issue: objects are not treated as const in contract predicates.</li>
   <li>Resolved open issue: implementations may (but don't have to)
 runtime-check contract annotations in core constant expressions even in
-<em>Ignore</em> mode.</li>
+<em>No_eval</em> mode.</li>
   <li>Added an open issue: alternate postcondition syntax.</li>
   <li>Expanded the design details and rationale section, based on feedback from SG21.</li>
 </ol>
@@ -151,6 +151,11 @@ runtime-check contract annotations in core constant expressions even in
   <li>Expanded the rationale for the choice of syntax in section <a href="#rat.att">{rat.att}</a>.
       Discussed the concerns about confusion with attributes and the potential incompatibility
       with the C programming language.
+      </li>
+  <li>Renamed the names of the two translation modes to <em>Eval_and_abort</em>
+      and <em>No_eval</em>, in ordered to clearly suggest that they control the
+      runtime evaluation of the predicates, rather than the checking of syntactic
+      correctness at compile time.
       </li>
 </ol>
 
@@ -204,18 +209,18 @@ int select(int i, int j)   <em>// the definition</em>
 <p>We specirfy the semantics of two modes of program translation:</p>
 
 <ol>
-  <li><strong><em>Ignore</em></strong>: compiler checks the validity of expressions in contract annotations,
+  <li><strong><em>No_eval</em></strong>: compiler checks the validity of expressions in contract annotations,
       but the annotations have no effect on the generated binary. Functions appearing in the predicate are ODR-used.
       </li>
-  <li><strong><em>Check_and_abort</em></strong>: each contract annotation is checked at runtime.
+  <li><strong><em>Eval_and_abort</em></strong>: each contract annotation is checked at runtime.
       The check evaluates the corresponding predicate; if the result equals <code>false</code>,
       an implementation-defined <em>contract violation handler</em> is invoked.
       </li>
 </ol>
 
-<p> We recommend (the ISO word "should") that the default mode is <em>Check_and_abort</em>.
+<p> We recommend (the ISO word "should") that the default mode is <em>Eval_and_abort</em>.
 
-<h3><em>Check_and_abort</em> contract violation handler semantics</h3>
+<h3><em>Eval_and_abort</em> contract violation handler semantics</h3>
 
 <p>The semantics of the contract violation handler are implementation-defined, subject to the following constraint:
     <b>control never leaves the violation handler</b>.
@@ -239,7 +244,7 @@ accessible to predicates of preconditions and postconditions of member and
 befriended functions.
 </p>
 
-<p> Preconditions and postconditions are checked (in <em>Check_and_abort</em> mode)
+<p> Preconditions and postconditions are checked (in <em>Eval_and_abort</em> mode)
     even if the function is called through a pointer.</p>
 
 <h3>Side-effects</h3>
@@ -251,12 +256,12 @@ befriended functions.
 <p> Looking at the source code with contract annotations alone — that is, not looking at compiler switches —
     the programmer has no guarantee if predicates in contract annotation will be evaluated at runtime or not, or
     if the program is stopped after such evaluation. Whether the side effects of predicates are evaluated
-    (one or more times) or not — even in <em>Check_and_abort</em> mode — is unspecified.</p>
+    (one or more times) or not — even in <em>Eval_and_abort</em> mode — is unspecified.</p>
 
 <h3>Mixed-mode linking</h3>
 
 <p> Implementations are allowed to provide a mixed mode, where some translation units are translated in
-    <em>Ignore</em> mode and others in <em>Check_and_abort</em> mode. This may be necessary for linking
+    <em>No_eval</em> mode and others in <em>Eval_and_abort</em> mode. This may be necessary for linking
     the user program with compiled libraries.</p>
 
 <h2><a name="not">3. Deferred features</a></h2>
@@ -332,7 +337,7 @@ befriended functions.
 </p>
 
 <p>Libraries that declare contract annotations and ship compiled binaries
-    will have to ship two versions: one compiled in <em>Ignore</em> mode, and one in <em>Check_and_abort</em>.
+    will have to ship two versions: one compiled in <em>No_eval</em> mode, and one in <em>Eval_and_abort</em>.
     This also applies to the Standard Library.
     </p>
 
@@ -399,7 +404,7 @@ befriended functions.
 <p> We believe that this overlapping part is already useful for many groups of programmers.
     It allows the programmers to declare what they know to be a bug in their components.
     It allows tools other than compilers — such as static analyzers or IDEs —
-    to diagnose or help diagnose bugs in programs statically. The <em>Check_and_abort</em> mode
+    to diagnose or help diagnose bugs in programs statically. The <em>Eval_and_abort</em> mode
     gives a guarantee to programmers that if a bug is detected at run-time, the program —
     apart from aborting — will do no further damage. This enables UB-sanitizers to diagnose
     not only abstract machine violations ("hard" UB) but also contract violations in a uniform way
@@ -985,7 +990,7 @@ struct Deriv : Base
     in their program; therefore tools like sanitizers can insert defensive
     checks based on correctness annotations, and report them in a way that is
     uniform with how UB (such as null pointer dereference) is reported. Such
-    insertions are conformant with what we allow in <em>Check_and_abort</em>
+    insertions are conformant with what we allow in <em>Eval_and_abort</em>
     mode, as long as the program terminates afterwards.</p>
 
 <p> Second, if:</p>
@@ -1296,7 +1301,7 @@ int main()
     </p>
 
 <p> This looks similar to ODR violation. The consequences in the run-time behavior
-    in <em>Check_and_abort</em> mode are that the wrong set of contract annotations
+    in <em>Eval_and_abort</em> mode are that the wrong set of contract annotations
     gets executed or that both sets are executed, if the implementation decides to
     test the pre-/postconditions both inside and outside the function.
     </p>
@@ -1312,7 +1317,7 @@ int main()
     <li>If such incompatible declarations occur in the program, it is ill-formed, no diagnostic required (IF-NDR).</li>
     <li>It is ok to have such incompatible declarations as long as the function is not called. If it is, the behavior is undefined (UB).</li>
     <li>Allow calling such function, but make it unspecified which set
-of pre-/postconditions, or both, is called in <em>Check_and_abort</em> mode.</li>
+of pre-/postconditions, or both, is called in <em>Eval_and_abort</em> mode.</li>
 </ol>
 
 <p> We choose option 1, because this most clearly reflects what such situation
@@ -1406,7 +1411,7 @@ string forward(string str) <em>// disallowed in our proposal</em>
 }             <em>// postcondition reads the moved-from state</em>
 </pre>
 
-<p> If we allow this to compile in <em>Check_and_abort</em> mode, we end up with the
+<p> If we allow this to compile in <em>Eval_and_abort</em> mode, we end up with the
     postcondition reading the moved-from state. A programmer may not be even aware
     that a move is taking place. We prefer a compiler error to Undefined Behavior
     here. The programmer always has an option to fix that, either by dropping
@@ -1512,20 +1517,20 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
     </p>
 
 <p> Another option: silently make a copy of every non-reference parameter
-    referenced in the postcondition in <em>Check_and_abort</em> mode.
+    referenced in the postcondition in <em>Eval_and_abort</em> mode.
     This copy would be only visible to the postcondition, so there is no way a
     function can possibly change it.</p>
 
 <p> While attractive, this has certain disadvantages.</p>
 
 <ol>
-<li>This would require making silent copies in <em>Check_and_abort</em> mode.
+<li>This would require making silent copies in <em>Eval_and_abort</em> mode.
     This may not be satisfactory if a type is expensive to copy, or simply
     non-copyable, and is a bad trade-off in situations where the function does
     not modify the parameter anyway.</li>
 <li>This would create a situation where a program compiles
-    in <em>Ignore</em> mode, but stops compiling in the moment we switch to
-    <em>Check_and_abort</em> mode (because some types are non-copyable). This is
+    in <em>No_eval</em> mode, but stops compiling in the moment we switch to
+    <em>Eval_and_abort</em> mode (because some types are non-copyable). This is
     against one of our design goals: chnging a mode cannot make a program fail
     to compile.</li>
 <li>Making a copy is still not sufficient a solution for types &mdash;
@@ -1535,8 +1540,8 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
 </ol>
 
 <p> Another option is a variant of the above: silently make a copy of a
-    postcondition-referenced argument in <em>Check_and_abort</em> mode, and in
-    <em>Ignore</em> mode fail to compile if this object's type is not copyable.
+    postcondition-referenced argument in <em>Eval_and_abort</em> mode, and in
+    <em>No_eval</em> mode fail to compile if this object's type is not copyable.
     This removes the compile-time surprise when switching between modes; but
     it does not remove the other two problems: unexpected copies and problems
     with types that do not have value semantics.
@@ -1589,8 +1594,8 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
 }</pre>
 
 <p> This program upon <code>p == nullptr</code> behaves in a way that (1) does not cause abstract machine violation and
-    (2) guarantees that the business logic, indicated with *, is never reached. This happens for both <em>Ignore</em>
-    and <em>Check_and_abort</em> mode. However, in a mode that allows the program to continue, this causes abstract machine violation
+    (2) guarantees that the business logic, indicated with *, is never reached. This happens for both <em>No_eval</em>
+    and <em>Eval_and_abort</em> mode. However, in a mode that allows the program to continue, this causes abstract machine violation
     upon runtime-checking the second precondition. This is explained in detail in <a href="#apa">appendix A</a>.</p>
 
 <p> We believe that "the continuation mode" is a useful feature that is necessary for some essential applications
@@ -1698,11 +1703,11 @@ void f(propagate_const&lt;shared_ptr&lt;X&gt;&gt; x)
 
 
 <p> First, it cannot be added later, because then it would be a breaking change. User may start to rely
-    on the mandated side effects in <em>Check_and_abort</em> mode, as per the Hyrum's Law, and these would
+    on the mandated side effects in <em>Eval_and_abort</em> mode, as per the Hyrum's Law, and these would
     suddenly disappear in future releases.</p>
 
 <p> Second, it gives a strong encouragement to the users not to put side effects in their predicates.
-    Their side effects may disappear, even in <em>Check_and_abort</em> mode; or they can be duplicated.</p>
+    Their side effects may disappear, even in <em>Eval_and_abort</em> mode; or they can be duplicated.</p>
 
 
 
@@ -1765,14 +1770,14 @@ public:
 <h3><a name="rationale.no_default">7.10. Why not mandate a default translation mode</a></h3>
 
 
-<p> We recommend that the default mode is <em>Check_and_abort</em>, but we do not require this of the
+<p> We recommend that the default mode is <em>Eval_and_abort</em>, but we do not require this of the
     implementations. The reason for that is that we believe that it is not possible to mandate this
     behavior in this International Standard.</p>
 
 <p> Our ideal is that users get safety by default and performance on request.
     ("Safety" in this context is understood as "do not let the program with a bug execute".)
     But what the users often use is an IDE. Even if we were able to require of the compiler
-    that its default mode is <em>Check_and_abort</em>, the IDE can provide its own defaults
+    that its default mode is <em>Eval_and_abort</em>, the IDE can provide its own defaults
     which map on non-default values of compiler switches.
     </p>
 
@@ -1828,13 +1833,13 @@ public:
 <h3><a name="rationale.constexpr">7.12. Interaction with <code>constexpr</code> functions</a></h3>
 
 
-<p> During core constant expression evaluation in <em>Check_and_abort</em>
+<p> During core constant expression evaluation in <em>Eval_and_abort</em>
     mode when any function precondition, postcondition or
     assertion is violated, the program is ill-formed.
     </p>
 
 <p> Ideally, we would like such evaluation to be ill-formed
-    even in <em>Ignore</em> mode. However, we are not sure if this is easily
+    even in <em>No_eval</em> mode. However, we are not sure if this is easily
     implementable on all platforms. This proposal allows but not requires this.
     </p>
 
@@ -2026,7 +2031,7 @@ bool bar(int i)
 
 <p> In the first case, the application of the "continue" semantics is not a default behavior, and would require that
     a person who assembles the program instructs the compiler to use the special behavior. This can be added in the future
-    as a third mode of translating the source code with contract annotations (in addition to <em>Ignore</em> and <em>Check_and_abort</em>).
+    as a third mode of translating the source code with contract annotations (in addition to <em>No_eval</em> and <em>Eval_and_abort</em>).
     </p>
 
 <p> In the second case, there is a need to discriminate the newly added
@@ -2191,7 +2196,7 @@ ForwardIt find(ForwardIt first, ForwardIt last, const T&amp; value)
   <li><em>contract annotation</em> — either a precondition or a postcondition. </li>
   <li><em>correctness annotation</em> — either an assertion or a contract annotation. </li>
   <li><em>correctness test</em> — is an "event" corresponding to a correctness annotation &mdash;
-      it may be a no-op in <em>Ignore</em> mode or produce instructions in <em>Check_and_abort</em> &mdash;
+      it may be a no-op in <em>No_eval</em> mode or produce instructions in <em>Eval_and_abort</em> &mdash;
       which can be sequenced before or after other instructions.</li>
 </ul>
 
@@ -2644,10 +2649,10 @@ or static storage duration are executed. Functions passed to <code>atexit()</cod
 
 <p> 8.
 
-In translation mode <em>enforce</em> all correctness annotation tests are enforced. In translation mode <em>Ignore</em>
+In translation mode <em>enforce</em> all correctness annotation tests are enforced. In translation mode <em>ignore</em>
  during constant evaluation (7.7) it is implementation-defined whether
 correctness annotation tests are ignored or enforced. In all other
-situations in <em>Ignore</em> translation mode all correctness annotation tests are ignored.
+situations in <em>ignore</em> translation mode all correctness annotation tests are ignored.
 
 </p>
 
