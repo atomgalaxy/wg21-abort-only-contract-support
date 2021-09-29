@@ -239,7 +239,7 @@ int select(int i, int j)   <em>// the definition</em>
 }
 </pre>
 
-<p>We specirfy the semantics of two modes of program translation:</p>
+<p>We specify the semantics of two modes of program translation:</p>
 
 <ol>
   <li><strong><em>No_eval</em></strong>: compiler checks the validity of expressions in contract annotations,
@@ -1449,6 +1449,21 @@ string forward(string str) <em>// disallowed in our proposal</em>
     that a move is taking place. We prefer a compiler error to Undefined Behavior
     here. The programmer always has an option to fix that, either by dropping
     the postcondition or declaring the function parameter <code>const</code>.</p>
+
+<h3> What if someone uses <code>const_cast</code> to cast away <code>const</code>-ness?</h3>
+
+
+<p> This falls under general rules in C++ for casting away <code>const</code>-ness.
+    <a href="http://eel.is/c++draft/dcl.type#cv-4">
+[dcl.type.cv]/4</a>:</p>
+
+<blockquote>Any attempt to modify a const object during its lifetime results in undefined behavior.</blockquote>
+
+<p> This is a good opportunity to remind best practices of using <code>const_cast</code>:
+    You can only use it safely when you already know, by other means, that the object you cast a
+    pointer/reference to is not <code>const</code>.</p>
+
+
 
 <h3> Why do we require it only for non-reference parameters?</h3>
 
