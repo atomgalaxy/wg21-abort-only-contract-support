@@ -97,7 +97,7 @@ Minimum Viable Product (MVP) achieving the following goals:
 {
   [&amp;]() noexcept {
     if (are_compatible(a, b)) {} else {
-      CONTRACT_VIOLATION_HANDLER("are_compatible(a, b)");
+      CONTRACT_VIOLATION_HANDLER(); <em>// maybe a no-op</em>
       std::abort();
     }
   }(); <em>// immediately invoked lambda</em>
@@ -105,11 +105,23 @@ Minimum Viable Product (MVP) achieving the following goals:
   return transform(a, b);
 }</pre>
 
-<p> That is: a runtime check is performed, and if it returns something <code>false</code>y, an implementation-defined message is displayed
-    to the stream buffer associated with the object <code>stderr</code> and <code>std::abort()</code> is called. If any exception is thrown during the evaluation of the predicate or the
-    logging statement, <code>std::terminate()</code> is called.</p>
+<p> That is: a runtime check is performed, and if it returns something <code>false</code>y, <code>std::abort()</code> is called. If any exception is thrown during the evaluation of the predicate or the the optional contract violation handler, <code>std::terminate()</code> is called.</p>
 
-<p>In <em>No_eval</em> mode, the code is rendered without calling the lambda (thus odr-using the predicate, but not evaluating it).</p>
+<p>In <em>No_eval</em> mode, the generated code is similar, but it does not actually invoke the lambda:</p>
+
+
+<pre>bool fun(int a, int b)
+{
+  (void)[&amp;]() noexcept {
+    if (are_compatible(a, b)) {} else {
+      CONTRACT_VIOLATION_HANDLER(); <em>// maybe a no-op</em>
+      std::abort();
+    }
+  }; <em>// lambda not invoked</em>
+
+  return transform(a, b);
+}</pre>
+<p>That is, the predicate is odr-used but not evaluated.</p>
 
 
 <h2><a name="rev">0. Revision history <span class="link">{rev}</span></a></h2>
@@ -241,13 +253,13 @@ int select(int i, int j)   <em>// the definition</em>
 
 <p> We recommend (the ISO word "should") that the default mode is <em>Eval_and_abort</em>.
 
-<h3><em>Eval_and_abort</em> contract violation handler semantics</h3>
+<h3><em>Eval_and_abort</em> mode violation handler semantics</h3>
 
 <p>The semantics of the contract violation handler are implementation-defined, subject to the following constraint:
     <b>control never leaves the violation handler</b>.
     It can stop the program, hit a breakpoint, or run forever after emailing a sysadmin, for instance.
     If the program exits, it must signal unsuccessful termination appropriately for the context, such at returning a non-zero error code (as with <code>abort()</code>).
-    We recommend (the ISO word "should") that the violation handler output a diagnostic message to the standard diagnostic stream and call <code>std::abort()</code>.
+    A default safe implementation will do nothing in the violation handler, and will just let <code>std::abort()</code> be called.
     This corresponds to what <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2358r0.pdf">[P2358R0]</a>
     calls "Unspecified but never returns" and what <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1606r0.pdf">[P1606R0]</a>
     calls "check_never_continue".</p>
