@@ -179,6 +179,8 @@ runtime-check contract annotations in core constant expressions even in
       a message to the standard diagnostic output. This is to address security
       concerns.
       </li>
+  <li>Addressed the usage of <code>const_cast</code> in section <a href="#rat.att">{rat.arg}.</a>
+      </li>
 </ol>
 
 
@@ -1261,7 +1263,7 @@ int f(int i)
     be cast to a funciton pointer declared without <code>[[gnu::fastcall]]</code>
     and vice versa. But this behavior is speciffic to this single attribute,
     and there is no way to draw a conclusion that the same should apply to any
-    attribute that appertains to function type. THere is nothing that prevents
+    attribute that appertains to function type. There is nothing that prevents
     a different attribute from appertaining to function type and not affecting
     the type system at the same time.</p>
 
