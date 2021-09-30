@@ -187,6 +187,10 @@ runtime-check contract annotations in core constant expressions even in
   <li>Added section <a href="#imp">{imp}</a> on implementability, which discusses lists
       two reference implementations.
       </li>
+  <li>Expanded the rationale in section <a href="#rat.end">{rat.end}</a> on why we require
+      the call to <code>std::abort()</code> (rather than <code>std::terminate()</code>)
+      upon contract violation.
+      </li>
 </ol>
 
 
@@ -2064,7 +2068,7 @@ bool bar(int i)
 
 
 
-<h3><a name="rationale.abort_or_term">7.16. <code>abort()</code> vs <code>terminate()</code></a></h3>
+<h3><a name="rat.end">7.16. <code>abort()</code> vs <code>terminate()</code> <span class="link">{rat.end}</span></a></h3>
 
 <p> In this proposal, throwing from the predicate calls <code>std::terminate()</code> while a failed runtime check
     calls <code>std::abort()</code>. (We simply forbid the implementations
@@ -2078,12 +2082,15 @@ bool bar(int i)
     is an exception handler, with its unique control flow, however harsh.</p>
 
 <p> In contrast, failing a runtime correctness test is an indication of a bug, and it is not clear if <code>std::terminate()</code>,
-    which is the second level of exception handling mechanism, is a suitable tool.</p>
+    which is the second level of exception handling mechanism, is a suitable tool. The call to <code>std::terminate()</code>
+    either calls <code>std::abort()</code> or calls a terminate handler installed by the user. In case the contract is
+    violated, and we can be sure the program contains a bug, calling a user-installed function may be unsafe,
+    and can pose a security risk.</p>
 
 
 
 
-<h3><a name="rationale.assert_statement">7.17. <code>[[assert:]]</code> is not an expression</a></h3>
+<h3><a name="rat.exp">7.17. <code>[[assert:]]</code> is not an expression <span class="link">{rat.exp}</span></a></h3>
 
 
 <p> In this proposal <code>[[assert:]]</code> can only appertain to a null statement, which effectively makes it a statement,
@@ -2132,6 +2139,19 @@ bool bar(int i)
     scenario requires the usage of <code>__builtin_unreachable()</code>, which
     is easily detectable through simple mechanical checks, and cannot be installed at runtime.
     </p>
+
+
+<h3><a name="rat.log">7.19. No runtime error message<span class="link">{rat.log}</span></a></h3>
+
+<p> This revision of the paper does not require or encourage
+    any error message to be displayed to standard diagnostic stream, or anywhere
+    in <em>Eval_and_abort</em> mode.
+    There are two reasosn. First, there is no standard diagnostic stream on
+    hosted implementations, and we want contract support to be available on
+    those platforms. Second, for security reasons. When an application is in a confirmed
+    incorrect state, performing IO operations may pose a security risk.
+    As the primary focus of this proposal is safety, we choose a conservative 
+    approach.</p>
 
 
 <h2><a name="fut">8. Future compatibility
