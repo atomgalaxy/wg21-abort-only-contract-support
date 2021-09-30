@@ -181,7 +181,7 @@ runtime-check contract annotations in core constant expressions even in
       </li>
   <li>Addressed the usage of <code>const_cast</code> in section <a href="#rat.att">{rat.arg}</a>.
       </li>
-  <li>Extended the discussion on per-subexpression side effect elimination in 
+  <li>Extended the discussion on per-subexpression side effect elimination in
       section <a href="#rat.eff">{rat.eff}</a>.
       </li>
   <li>Added section <a href="#imp">{imp}</a> on implementability, which discusses lists
@@ -1778,23 +1778,23 @@ int generate(int lo, int hi) <em>// OK</em>
 <h4>Side effect elision on subexpression basis</h4>
 
 
-<p> We allow the implementation to pick any subexpression form a predicate, and discard all (as opposed to some) 
+<p> We allow the implementation to pick any subexpression form a predicate, and discard all (as opposed to some)
     its side effects. This allows the implementation in the following example to call <code>p1</code> and <code>p2</code> only once, even
     though the preconditions and the postcondition are not ODR-identical:</p>
-    
+
 <pre>
 int produce()
   [[post r: p1(r) &amp;&amp; p2(r)]];
-  
+
 void consume(int i)
   [[pre: p1(i)]]
   [[pre: p2(i)]];
-  
+
 consume(produce());
 </pre>
 
 <p> Given the above provision, is it safe to evaluate a predicate that
-    has to lock a mutex to read the value and then unlock the mutex? 
+    has to lock a mutex to read the value and then unlock the mutex?
     The answer is yes, as long as it all happens inside one function:
     </p>
 
@@ -1810,24 +1810,24 @@ bool p1(int i)
 
 <p> Because in the contract annotation <code>p1(i)</code> is the most nested
     subexpressions, the entire function body has to either be executed
-    or the entire call to <code>p1(i)</code> skipped.    
+    or the entire call to <code>p1(i)</code> skipped.
     </p>
-    
+
 <p> On the other hand, the following is dangerous, and may cause
     concurrency issues, if the compiler decides to elide side effects per
-    subexpression:    
+    subexpression:
     </p>
-  
+
 <pre>
 void consume2(int i)
-  [[pre: (lock_mutex(), read_counter(), unlock_mutex(), counter() &lt;= 1) ]];  
+  [[pre: (lock_mutex(), read_counter(), unlock_mutex(), counter() &lt;= 1) ]];
 </pre>
 
 
 <p> Is such provision for per-subexpression side effect elision safe?
     Our response is: yes, because the chunks of side effects that the compiler
     will potentially be removing are always clearly visible to the programmer
-    inside a contract annotation in the form of subexpressions.    
+    inside a contract annotation in the form of subexpressions.
     </p>
 
 
@@ -2147,10 +2147,10 @@ bool bar(int i)
     any error message to be displayed to standard diagnostic stream, or anywhere
     in <em>Eval_and_abort</em> mode.
     There are two reasosn. First, there is no standard diagnostic stream on
-    hosted implementations, and we want contract support to be available on
+    freestanding implementations, and we want contract support to be available on
     those platforms. Second, for security reasons. When an application is in a confirmed
     incorrect state, performing IO operations may pose a security risk.
-    As the primary focus of this proposal is safety, we choose a conservative 
+    As the primary focus of this proposal is safety, we choose a conservative
     approach.</p>
 
 
@@ -2975,23 +2975,23 @@ handler (9.12.4.2). — <i>end note</i>]
 
 <h2><a name="imp">11. Implementability
     <span class="link">{imp}</span></a></h2>
-    
+
 <p> <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1680r0.pdf">[P1680R0]</a>
     by Andrew Sutton and Jeff Chapman
     describes the implementation in gcc of a variation of contract support. It is a superset
     of this proposal. Quoting from <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1680r0.pdf">[P1680R0]</a>:
 </p>
 
-<blockquote>The implementation is hosted online at 
-    <a href="https://gitlab.com/lock3/gcc-new">https://gitlab.com/lock3/gcc-new</a>. 
+<blockquote>The implementation is hosted online at
+    <a href="https://gitlab.com/lock3/gcc-new">https://gitlab.com/lock3/gcc-new</a>.
     The implementation lives in the branch <code>contracts</code>.
-    This compiler can also be used online through Compiler 
+    This compiler can also be used online through Compiler
     Explorer (<a href="https://godbolt.org/">https://godbolt.org/</a>) as x86-64 gcc (contracts).
     </blockquote>
-    
+
 <p> <a href="https://llvm.org/devmtg/2019-04/slides/Poster-Lopez-Gomez-Adding_support_for_C++_contracts_to_Clang.pdf">[LOPEZ19]</a>
     describes another implementation for Clang of P0542-contracts, which is a superset of this proposal.
-    The implementation can be found as 
+    The implementation can be found as
     <a href="https://github.com/arcosuc3m/clang-contracts/">https://github.com/arcosuc3m/clang-contracts/</a>.
     </p>
 
@@ -3127,7 +3127,7 @@ handler (9.12.4.2). — <i>end note</i>]
 
   <li>[P0627R5] — Melissa Mears, Jens Maurer, "Function to mark unreachable code"<br>
       (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p0627r5.pdf">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p0627r5.pdf</a>).</li>
-      
+
   <li>[LOPEZ19] — Javier López-Gómez, J. Daniel García, "Adding support for C++ contracts to Clang"<br>
       (<a href="https://llvm.org/devmtg/2019-04/slides/Poster-Lopez-Gomez-Adding_support_for_C++_contracts_to_Clang.pdf">https://llvm.org/devmtg/2019-04/slides/Poster-Lopez-Gomez-Adding_support_for_C++_contracts_to_Clang.pdf</a>).</li>
 
