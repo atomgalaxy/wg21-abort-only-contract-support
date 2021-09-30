@@ -179,10 +179,13 @@ runtime-check contract annotations in core constant expressions even in
       a message to the standard diagnostic output. This is to address security
       concerns.
       </li>
-  <li>Addressed the usage of <code>const_cast</code> in section <a href="#rat.att">{rat.arg}.</a>
+  <li>Addressed the usage of <code>const_cast</code> in section <a href="#rat.att">{rat.arg}</a>.
       </li>
   <li>Extended the discussion on per-subexpression side effect elimination in 
-      section <a href="#rat.eff">{rat.eff}.</a>
+      section <a href="#rat.eff">{rat.eff}</a>.
+      </li>
+  <li>Added section <a href="#imp">{imp}</a> on implementability, which discusses lists
+      two reference implementations.
       </li>
 </ol>
 
@@ -2950,8 +2953,30 @@ handler (9.12.4.2). — <i>end note</i>]
 
 
 
+<h2><a name="imp">11. Implementability
+    <span class="link">{imp}</span></a></h2>
+    
+<p> <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1680r0.pdf">[P1680R0]</a>
+    by Andrew Sutton and Jeff Chapman
+    describes the implementation in gcc of a variation of contract support. It is a superset
+    of this proposal. Quoting from <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1680r0.pdf">[P1680R0]</a>:
+</p>
 
-<h2><a name="ack">11. Acknowledgments
+<blockquote>The implementation is hosted online at 
+    <a href="https://gitlab.com/lock3/gcc-new">https://gitlab.com/lock3/gcc-new</a>. 
+    The implementation lives in the branch <code>contracts</code>.
+    This compiler can also be used online through Compiler 
+    Explorer (<a href="https://godbolt.org/">https://godbolt.org/</a>) as x86-64 gcc (contracts).
+    </blockquote>
+    
+<p> <a href="https://llvm.org/devmtg/2019-04/slides/Poster-Lopez-Gomez-Adding_support_for_C++_contracts_to_Clang.pdf">[LOPEZ19]</a>
+    describes another implementation for Clang of P0542-contracts, which is a superset of this proposal.
+    The implementation can be found as 
+    <a href="https://github.com/arcosuc3m/clang-contracts/">https://github.com/arcosuc3m/clang-contracts/</a>.
+    </p>
+
+
+<h2><a name="ack">12. Acknowledgments
     <span class="link">{ack}</span></a></h2>
 
 <p>Daveed Vandevoorde offered useful feedback on the syntax of contract annotations.</p>
@@ -2972,7 +2997,7 @@ handler (9.12.4.2). — <i>end note</i>]
 
 
 
-<h2><a name="ref">12. References
+<h2><a name="ref">13. References
     <span class="link">{ref}</span></a></h2>
 
 <ul>
@@ -3050,6 +3075,9 @@ handler (9.12.4.2). — <i>end note</i>]
       (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1344r1.md">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1344r1.md</a>).
       </li>
 
+  <li>[P1680R0] — Andrew Sutton, Jeff Chapman, "Implementing Contracts in GCC" <br>
+      (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1680r0.pdf">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1680r0.pdf</a>).
+      </li>
 
 
   <li>[P1769R0] — Ville Voutilainen, Richard Smith, "The «default»
@@ -3079,6 +3107,9 @@ handler (9.12.4.2). — <i>end note</i>]
 
   <li>[P0627R5] — Melissa Mears, Jens Maurer, "Function to mark unreachable code"<br>
       (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p0627r5.pdf">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p0627r5.pdf</a>).</li>
+      
+  <li>[LOPEZ19] — Javier López-Gómez, J. Daniel García, "Adding support for C++ contracts to Clang"<br>
+      (<a href="https://llvm.org/devmtg/2019-04/slides/Poster-Lopez-Gomez-Adding_support_for_C++_contracts_to_Clang.pdf">https://llvm.org/devmtg/2019-04/slides/Poster-Lopez-Gomez-Adding_support_for_C++_contracts_to_Clang.pdf</a>).</li>
 
 </ul>
 
