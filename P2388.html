@@ -56,7 +56,7 @@ td { text-align: left;  padding-left: 0.4em; border: none;  padding-right: 0.4em
     <th>Document number:&nbsp;&nbsp;</th><th> </th><td>D2388R3</td>
   </tr>
   <tr>
-    <th>Date:&nbsp;&nbsp;</th><th> </th><td>2021-09-28</td>
+    <th>Date:&nbsp;&nbsp;</th><th> </th><td>2021-09-30</td>
   </tr>
   <tr>
     <th>Audience:&nbsp;&nbsp;</th><th> </th><td>SG21</td>
@@ -181,10 +181,13 @@ runtime-check contract annotations in core constant expressions even in
       </li>
   <li>Addressed the usage of <code>const_cast</code> in section <a href="#rat.att">{rat.arg}.</a>
       </li>
+  <li>Extended the discussion on per-subexpression side effect elimination in 
+      section <a href="#rat.eff">{rat.eff}.</a>
+      </li>
 </ol>
 
 
-<h2><a name="term">1. Terminology <span class="link">{term}</span></a></h3>
+<h2><a name="term">1. Terminology <span class="link">{def}</span></a></h3>
 
 <p> In this document we use the following terms recommended in
     <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2038r0.html">[P2038R0]</a> and
@@ -1764,6 +1767,61 @@ int generate(int lo, int hi) <em>// OK</em>
     predicate transformations that we described earlier.
     </p>
 
+
+<h4>Side effect elision on subexpression basis</h4>
+
+
+<p> We allow the implementation to pick any subexpression form a predicate, and discard all (as opposed to some) 
+    its side effects. This allows the implementation in the following example to call <code>p1</code> and <code>p2</code> only once, even
+    though the preconditions and the postcondition are not ODR-identical:</p>
+    
+<pre>
+int produce()
+  [[post r: p1(r) &amp;&amp; p2(r)]];
+  
+void consume(int i)
+  [[pre: p1(i)]]
+  [[pre: p2(i)]];
+  
+consume(produce());
+</pre>
+
+<p> Given the above provision, is it safe to evaluate a predicate that
+    has to lock a mutex to read the value and then unlock the mutex? 
+    The answer is yes, as long as it all happens inside one function:
+    </p>
+
+<pre>
+bool p1(int i)
+{
+  lock_global_mutex();
+  int c = read_global_counter();
+  unlock_global_mutex();
+  return c &lt;= i;
+}
+</pre>
+
+<p> Because in the contract annotation <code>p1(i)</code> is the most nested
+    subexpressions, the entire function body has to either be executed
+    or the entire call to <code>p1(i)</code> skipped.    
+    </p>
+    
+<p> On the other hand, the following is dangerous, and may cause
+    concurrency issues, if the compiler decides to elide side effects per
+    subexpression:    
+    </p>
+  
+<pre>
+void consume2(int i)
+  [[pre: (lock_mutex(), read_counter(), unlock_mutex(), counter() &lt;= 1) ]];  
+</pre>
+
+
+<p> Is such provision for per-subexpression side effect elision safe?
+    Our response is: yes, because the chunks of side effects that the compiler
+    will potentially be removing are always clearly visible to the programmer
+    inside a contract annotation in the form of subexpressions.    
+    </p>
 
 
 <h3><a name="rat.eli">7.8. Why include side effect elision in the MVP
