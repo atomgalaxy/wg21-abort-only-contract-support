@@ -56,7 +56,7 @@ td { text-align: left;  padding-left: 0.4em; border: none;  padding-right: 0.4em
     <th>Document number:&nbsp;&nbsp;</th><th> </th><td>D2388R3</td>
   </tr>
   <tr>
-    <th>Date:&nbsp;&nbsp;</th><th> </th><td>2021-09-30</td>
+    <th>Date:&nbsp;&nbsp;</th><th> </th><td>2021-10-05</td>
   </tr>
   <tr>
     <th>Audience:&nbsp;&nbsp;</th><th> </th><td>EWG, SG21, SG22</td>
@@ -67,6 +67,7 @@ td { text-align: left;  padding-left: 0.4em; border: none;  padding-right: 0.4em
       </td>
   </tr>
 </tbody></table>
+
 
 <h1>Minimum Contract Support: either <em>No_eval</em> or <em>Eval_and_abort</em></h1>
 
@@ -191,6 +192,9 @@ runtime-check contract annotations in core constant expressions even in
       the call to <code>std::abort()</code> (rather than <code>std::terminate()</code>)
       upon contract violation.
       </li>
+  <li>Clarified that contract predicates are not in the immediate context.
+      See sections <a href="#des.imm">{des.imm}</a> and <a href="#rat.imm">{rat.imm}</a>.
+      </li>
 </ol>
 
 
@@ -255,7 +259,7 @@ int select(int i, int j)   <em>// the definition</em>
 
 <ol>
   <li><strong><em>No_eval</em></strong>: compiler checks the validity of expressions in contract annotations,
-      but the annotations have no effect on the generated binary. Functions appearing in the predicate are ODR-used.
+      but the annotations have no effect on the generated binary. Functions appearing in the predicate are odr-used.
       </li>
   <li><strong><em>Eval_and_abort</em></strong>: each contract annotation is checked at runtime.
       The check evaluates the corresponding predicate; if the result equals <code>false</code>,
@@ -1069,8 +1073,39 @@ struct Deriv : Base
 <p> If this implementation was used in combination with the above suggestion to
     put <code>std::unreachable()</code> in a custom contract violation handler,
     this would cause an infinite recursion. Therefore, this proposal disallows
-    the implementaitons to put contract annotations on <code>std::unreachable()</code>,
+    the implementations to put contract annotations on <code>std::unreachable()</code>,
     if it is added.</p>
+
+
+<h3><a name="des.imm">6.9. Contract annotations and the immediate context
+    <span class="link">{des.imm}</span></a></h3>
+
+
+<p> In this proposal the predicates in contract annotations are <em>not</em> in the
+    immediate context of the function. They behave similarly to exception specification:</p>
+    
+<pre>
+template &lt;std::regular T&gt;
+void f(T v, T u)
+  [[pre: v &lt; u]]; <em>// not part of std::regular</em>
+
+template &lt;typename T&gt;
+constexpr bool has_f = 
+  std::regular&lt;T&gt; &amp;&amp; 
+  requires(T v, T u) { f(v, u); };
+
+static_assert( has_f&lt;std::string&gt;);         <em>// OK: has_f returns true</em>
+static_assert(!has_f&lt;std::complex&lt;float&gt;&gt;); <em>// ill-formed: has_f causes hard instantiation error</em>
+</pre>
+
+
+<p> As a consequence, we may have a function template that works well for
+    a given type, but stops working the moment we add a contract annotation.
+    This also affects how concepts would be taught: a good concept should express
+    not only the operations that are necessary in the <em>implementation</em>
+    of the generic algorithms, but also these that are necessary in the
+    specification of contract annotations in these algorithms.
+    </p>
 
 
 
@@ -2153,6 +2188,66 @@ bool bar(int i)
     As the primary focus of this proposal is safety, we choose a conservative
     approach.</p>
 
+<h3><a name="rat.imm">7.20. Why contract annotations are not in the immediate context
+    <span class="link">{rat.imm}</span></a></h3>
+
+
+<p> This decision is a consequence of modelling contract annotations after <code>noexcept</code>.
+    Alternative designs would be:</p>
+    
+<ol>
+<li>Make contract annotations part of the immediate context, and thus remove functions from 
+    the overload set even if only contract annotations contain invalid expressions.</li>
+<li>Silently skip the contract type checking and runtime evaluation if the expression
+    in the contract annotation is invalid.</li>
+</ol>
+
+
+<p> Discarding the first alternative simplifies our model: we can say that contract
+    annotations do not affect the type system. The second alternative could cause runtime surprises,
+    where the programmer might be let to believe that their contract is enforced, when it is not.
+    </p> 
+    
+<p> The solution that we chose also comes with a surprise: "my program stopped compiling only 
+    because I added a contract". However, this is a compile-time surprise, which we find prefereble
+    to runtime surprises. We also believe that this potential surprise will be mitigated by 
+    guideline that concepts constraining the generic functions should also include operations
+    whose only use is to check the function preconditions:</p>
+  
+<pre>
+template &lt;Arithmetic T&gt;
+T scale(T a, T b)
+  [[pre: b != T{0}]]
+{
+  return a / b;
+}
+
+template &lt;typename T&gt;
+concept Arithmetic = requires(T a, T b)
+{
+  { a / b } -&gt; std::convertible_to&lt;T&gt;;
+  <em>// other operations</em>
+  
+  T{0}; <em>// in case we need to specify function contract</em>
+};
+</pre>  
+
+
+<p> Another possibility would be to provide a way for the function author to say,
+    "check this contract annotation only when it is well formed." We do not pdopose this for the MVP.
+    If such functionality is needed, it can be emulated by adding a concept-constrained overload:</p>
+
+<pre>
+template &lt;Arithmetic T&gt;
+T scale(T a, T b)
+  [[pre: b != T{0}]];
+
+template &lt;Arithmetic T&gt;
+  requires RichArithmetic&lt;T&gt;
+T scale(T a, T b)
+  [[pre: b != T{0}]];
+</pre>
+
 
 <h2><a name="fut">8. Future compatibility
     <span class="link">{fut}</span></a></h2>
@@ -2218,7 +2313,11 @@ bool bar(int i)
     (but they can still be turned into <code>std::terminate()</code> when <code>noexcept</code> functions are executed in unit-test programs).
     </p>
 
-<p>It is also possible to do negative testing of preconditions and postconditions by offering a set of reflection features tailored to that eventuality, without even running the function. A strawman proposal could be <code>std::are_preconditions_satisfied(f, x, y, z) -> bool</code>.</p>
+<p> It is also possible to do negative testing of preconditions and
+    postconditions by offering a set of reflection features tailored 
+    to that eventuality, without even running the function. A strawman 
+    proposal could be <code>std::are_preconditions_satisfied(f, x, y, z) -&gt; bool</code>.
+    </p>
 
 <p> This might look like a lot of modes of translation, but it should be kept in mind that the perspective of a person that looks
     at the code will not have modes: a declaration starting with <code>[[pre:</code> is always a precondition: something that
@@ -2610,10 +2709,31 @@ void h(X x) [[pre: x.m &gt; 0]];          <em>// error: m is a private member</e
 </pre>
 <p>— <i>end example</i>]</p>
 
-<p></p>
-
-
 <p> 5.
+A contract annotation  is considered to be <em>needed</em> when:
+</p>
+
+<ul>
+<li>in an expression, the function is selected by overload resolution 
+    (<a href="https://timsong-cpp.github.io/cppwp/over.match">[over.match]</a>, <a href="https://timsong-cpp.github.io/cppwp/over.over">[over.over]</a>);
+    </li>
+<li>the function is odr-used (6.3) or, if it appears in an unevaluated operand,
+    would be odr-used if the expression were potentially-evaluated; or
+    </li>
+<li>the function is defined.</li>
+</ul>
+
+<p> The conntract annotations of a specialization of a function template or
+     member function of a class template are instantiated only when needed.</p>
+
+</blockquote>
+
+<p class="editor">This implies that contract predicates are not in the immediate context
+    in overload resolution.</p>
+  
+<blockquote class="stdins">
+  
+<p> 5. TODO: renumber
 A precondition test (9.12.4.3) is performed immediately before starting evaluation of the function
 body. [<i>Note</i>: The function body includes the <em>function-try-block</em> (Clause 14) and the <em>ctor-initializer</em> (11.9.3).
 — <i>end note</i>] A postcondition test is performed immediately before returning control to
@@ -2939,6 +3059,19 @@ specialization are independent of those of the primary template.— <i>end note<
 
 </blockquote>
 
+
+<p>In 13.10.3.1 [temp.deduct.general] add a note after 13.10.3.1/7:</p>
+
+<blockquote class="stdins">
+
+<p> 14.
+[<i>Note</i>: The equivalent substitution in contract annotations (9.12.4.2)
+is done only when the contract annotation is instantiated, at which point a 
+program is ill-formed if the substitution results in an invalid type or 
+expression.— <i>end note</i>]
+</p>
+
+</blockquote>
 
 <p>In 14.5.1/1 [except.terminate] add a new bullet after bullet 1.7:</p>
 
