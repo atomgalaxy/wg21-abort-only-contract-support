@@ -720,7 +720,7 @@ int main()
 
 <p> In order to prevent this situation, we make it ill-formed when a postcondition
     references a function non-reference parameter, and this parameter is not declared
-    <code>const</code> in the funciton definition.</p>
+    <code>const</code> in the function definition.</p>
 
 <p> The postcondition needs to have access to the returned value, so it is
     called after the function has initialized it. In order for
@@ -1305,7 +1305,7 @@ int f(int i)
     them. For instance, Clang supports attribute <code>[[gnu::fastcall]]</code>
     which appertains to function type, and affects the type system,
     so that a function declared with with <code>[[gnu::fastcall]]</code> cannot
-    be cast to a funciton pointer declared without <code>[[gnu::fastcall]]</code>
+    be cast to a function pointer declared without <code>[[gnu::fastcall]]</code>
     and vice versa. But this behavior is speciffic to this single attribute,
     and there is no way to draw a conclusion that the same should apply to any
     attribute that appertains to function type. There is nothing that prevents
@@ -1408,7 +1408,7 @@ of pre-/postconditions, or both, is called in <em>Eval_and_abort</em> mode.</li>
 
 
 <h3><a name="rat.arg">7.3. Why is referring to non-<code>const</code> non-reference
-     funciton parameters in postconditions ill-formed?
+     function parameters in postconditions ill-formed?
     <span class="link">{rat.arg}</span></a></h3>
 
 
@@ -1675,7 +1675,7 @@ int generate(int lo, int hi) <em>// OK</em>
 
 <p> The D programming language, which has quite a similar model to C++ has a
     similar problem with referencing non-<code>const</code> parameters in
-    postconditions. However, it does not impose any constraints on the funciton
+    postconditions. However, it does not impose any constraints on the function
     parameters. As a result, postcondition runtime checks give counterintuitive
     results, as can bee seen in this Compiler Explorer example:
     <a href="https://d.godbolt.org/z/8xr1oqdq5">https://d.godbolt.org/z/8xr1oqdq5</a>.
@@ -3100,7 +3100,7 @@ expression.— <i>end note</i>]
 
 <blockquote class="stdins">
 <em>Remarks:</em> The declaration of this funcion shall not contain contract annotations.
-[<i>Note</i>: This ensures that this funciton can be used inside the contract violation
+[<i>Note</i>: This ensures that this function can be used inside the contract violation
 handler (9.12.4.2). — <i>end note</i>]
 </blockquote>
 
