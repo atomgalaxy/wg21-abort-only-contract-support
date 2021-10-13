@@ -195,6 +195,12 @@ runtime-check contract annotations in core constant expressions even in
   <li>Clarified that contract predicates are not in the immediate context.
       See sections <a href="#des.imm">{des.imm}</a> and <a href="#rat.imm">{rat.imm}</a>.
       </li>
+  <li>Added open issue for the choice of syntax. See section <a href="#ope.att">{ope.att}</a>.
+      </li>
+  <li>Added open issue for the description of side effects. See section <a href="#ope.eff">{ope.eff}</a>.
+      </li>
+  <li>Added open issue for the validity of the programming model. See section <a href="#ope.mod">{ope.mod}</a>.
+      </li>
 </ol>
 
 
@@ -2423,7 +2429,43 @@ ForwardIt find(ForwardIt first, ForwardIt last, const T&amp; value)
 </pre>
 
 
+<h3><a name="ope.att">9.2. The usage of attribute-like notation
+    <span class="link">{ope.att}</span></a></h3>
+    
+<p> There has been a number of concerns raised against the usage of 
+    attribute-like syntax for contract annotations. This paper does
+    not provide rationale for the choice of syntax. The syntax was inherited from 
+    P0542-contracts. The future revisions 
+    will either come with a different syntax, or a strong rationale for 
+    using the attribute-like notation.</p>
 
+
+<h3><a name="ope.eff">9.3. The granularity of side effect elision
+    <span class="link">{ope.eff}</span></a></h3>
+
+<p> There is a number of ways to specify what visible changes to
+    side effects in contract predicates a compiler is allowed to 
+    apply in <em>Eval_and_abort</em> mode. We are still investigating
+    which of those ways to chose.
+    </p>
+    
+<h3><a name="ope.mod">9.4. The programming model for preconditions
+    and postconditions
+    <span class="link">{ope.mod}</span></a></h3>
+    
+<p> The notion of preconditions, postconditions and invariants originated 
+    from functional programming languages, where terms "value" and "predicate"
+    make a lot of sense. In this paper we try to introduce preconditions and
+    postconditions to an imperative language that doesnt have "values" or 
+    "predicates": it has "objects", "states" and "functions". We observed that 
+    we are are still applying terms "value" and "predicate" when describing
+    the semantics of contract annotations. This is likely to lead to bugs in
+    the design. The symptom of one such bug has recently been revealed and 
+    described in section <a href="#rat.arg">{rat.arg}</a>. This is a clear indication
+    to the autors that the model for describing semantics of contract annotations
+    needs to be revisited.</p>
+    
+    
 
 
 <h2><a name="wor">10. Wording <span class="link">{wor}</span></a></h2>
