@@ -302,16 +302,18 @@ befriended functions.
 <p> Preconditions and postconditions are checked (in <em>Eval_and_abort</em> mode)
     even if the function is called through a pointer.</p>
 
+
 <h3>Side-effects</h3>
 
-<p> Side effects are supported in the predicates of contract annotations.
-    Implementations are allowed to both remove or duplicate these side effects,
-    so they cannot be relied upon. This is similar to the existing rules around eliding copy-constructor side-effects.
+<p> This proposal does not actively prevent programmers from putting predicates with
+    side effects inside contract annotations. However, doing so may have surprising
+    effects if the program relies on these side effects. </p>
 
-<p> Looking at the source code with contract annotations alone — that is, not looking at compiler switches —
-    the programmer has no guarantee if predicates in contract annotation will be evaluated at runtime or not, or
-    if the program is stopped after such evaluation. Whether the side effects of predicates are evaluated
-    (one or more times) or not — even in <em>Eval_and_abort</em> mode — is unspecified.</p>
+<p> Compilers are allowed to remove or duplicate these side effects (or parts thereof,
+    on subexpression basis) at their discretion, in <em>Eval_and_abort</em>
+    mode. In other words, mode <em>Eval_and_abort</em> guarantees that we will
+    compute the result of a predicate, but not that we will evalueate its side effects.</p>
+
 
 <h3>Mixed-mode linking</h3>
 
@@ -850,12 +852,12 @@ consume(produce());
 
 <p>The compiler is also allowed to call the predicate twice:</p>
 
-<pre>void f(int i) [[pre: p(i)]] [[pre: q(i)]];
+<pre>void f(int i) [[pre: p1(i)]] [[pre: p2(i)]];
 </pre>
 
 <p> When function <code>f()</code> is evaluated, it might cause
-    the following sequence of precondition tests: <code>p(i)</code>,
-    <code>q(i)</code>, <code>p(i)</code>, <code>q(i)</code>.
+    the following sequence of precondition tests: <code>p1(i)</code>,
+    <code>p2(i)</code>, <code>p1(i)</code>, <code>p2(i)</code>.
     This allows the implementations to test the preconditions
     both inside and outside the function body. This ability is
     useful for generating good error messages from preconditions:
@@ -1089,15 +1091,15 @@ struct Deriv : Base
 
 <p> In this proposal the predicates in contract annotations are <em>not</em> in the
     immediate context of the function. They behave similarly to exception specification:</p>
-    
+
 <pre>
 template &lt;std::regular T&gt;
 void f(T v, T u)
   [[pre: v &lt; u]]; <em>// not part of std::regular</em>
 
 template &lt;typename T&gt;
-constexpr bool has_f = 
-  std::regular&lt;T&gt; &amp;&amp; 
+constexpr bool has_f =
+  std::regular&lt;T&gt; &amp;&amp;
   requires(T v, T u) { f(v, u); };
 
 static_assert( has_f&lt;std::string&gt;);         <em>// OK: has_f returns true</em>
@@ -2200,9 +2202,9 @@ bool bar(int i)
 
 <p> This decision is a consequence of modelling contract annotations after <code>noexcept</code>.
     Alternative designs would be:</p>
-    
+
 <ol>
-<li>Make contract annotations part of the immediate context, and thus remove functions from 
+<li>Make contract annotations part of the immediate context, and thus remove functions from
     the overload set even if only contract annotations contain invalid expressions.</li>
 <li>Silently skip the contract type checking and runtime evaluation if the expression
     in the contract annotation is invalid.</li>
@@ -2212,14 +2214,14 @@ bool bar(int i)
 <p> Discarding the first alternative simplifies our model: we can say that contract
     annotations do not affect the type system. The second alternative could cause runtime surprises,
     where the programmer might be let to believe that their contract is enforced, when it is not.
-    </p> 
-    
-<p> The solution that we chose also comes with a surprise: "my program stopped compiling only 
+    </p>
+
+<p> The solution that we chose also comes with a surprise: "my program stopped compiling only
     because I added a contract". However, this is a compile-time surprise, which we find prefereble
-    to runtime surprises. We also believe that this potential surprise will be mitigated by 
+    to runtime surprises. We also believe that this potential surprise will be mitigated by
     guideline that concepts constraining the generic functions should also include operations
     whose only use is to check the function preconditions:</p>
-  
+
 <pre>
 template &lt;Arithmetic T&gt;
 T scale(T a, T b)
@@ -2233,10 +2235,10 @@ concept Arithmetic = requires(T a, T b)
 {
   { a / b } -&gt; std::convertible_to&lt;T&gt;;
   <em>// other operations</em>
-  
+
   T{0}; <em>// in case we need to specify function contract</em>
 };
-</pre>  
+</pre>
 
 
 <p> Another possibility would be to provide a way for the function author to say,
@@ -2320,8 +2322,8 @@ T scale(T a, T b)
     </p>
 
 <p> It is also possible to do negative testing of preconditions and
-    postconditions by offering a set of reflection features tailored 
-    to that eventuality, without even running the function. A strawman 
+    postconditions by offering a set of reflection features tailored
+    to that eventuality, without even running the function. A strawman
     proposal could be <code>std::are_preconditions_satisfied(f, x, y, z) -&gt; bool</code>.
     </p>
 
@@ -2431,12 +2433,12 @@ ForwardIt find(ForwardIt first, ForwardIt last, const T&amp; value)
 
 <h3><a name="ope.att">9.2. The usage of attribute-like notation
     <span class="link">{ope.att}</span></a></h3>
-    
-<p> There has been a number of concerns raised against the usage of 
+
+<p> There has been a number of concerns raised against the usage of
     attribute-like syntax for contract annotations. This paper does
-    not provide rationale for the choice of syntax. The syntax was inherited from 
-    P0542-contracts. The future revisions 
-    will either come with a different syntax, or a strong rationale for 
+    not provide rationale for the choice of syntax. The syntax was inherited from
+    P0542-contracts. The future revisions
+    will either come with a different syntax, or a strong rationale for
     using the attribute-like notation.</p>
 
 
@@ -2444,28 +2446,28 @@ ForwardIt find(ForwardIt first, ForwardIt last, const T&amp; value)
     <span class="link">{ope.eff}</span></a></h3>
 
 <p> There is a number of ways to specify what visible changes to
-    side effects in contract predicates a compiler is allowed to 
+    side effects in contract predicates a compiler is allowed to
     apply in <em>Eval_and_abort</em> mode. We are still investigating
     which of those ways to chose.
     </p>
-    
+
 <h3><a name="ope.mod">9.4. The programming model for preconditions
     and postconditions
     <span class="link">{ope.mod}</span></a></h3>
-    
-<p> The notion of preconditions, postconditions and invariants originated 
+
+<p> The notion of preconditions, postconditions and invariants originated
     from functional programming languages, where terms "value" and "predicate"
     make a lot of sense. In this paper we try to introduce preconditions and
-    postconditions to an imperative language that doesnt have "values" or 
-    "predicates": it has "objects", "states" and "functions". We observed that 
+    postconditions to an imperative language that doesnt have "values" or
+    "predicates": it has "objects", "states" and "functions". We observed that
     we are are still applying terms "value" and "predicate" when describing
     the semantics of contract annotations. This is likely to lead to bugs in
-    the design. The symptom of one such bug has recently been revealed and 
+    the design. The symptom of one such bug has recently been revealed and
     described in section <a href="#rat.arg">{rat.arg}</a>. This is a clear indication
     to the autors that the model for describing semantics of contract annotations
     needs to be revisited.</p>
-    
-    
+
+
 
 
 <h2><a name="wor">10. Wording <span class="link">{wor}</span></a></h2>
@@ -2756,7 +2758,7 @@ A contract annotation  is considered to be <em>needed</em> when:
 </p>
 
 <ul>
-<li>in an expression, the function is selected by overload resolution 
+<li>in an expression, the function is selected by overload resolution
     (<a href="https://timsong-cpp.github.io/cppwp/over.match">[over.match]</a>, <a href="https://timsong-cpp.github.io/cppwp/over.over">[over.over]</a>);
     </li>
 <li>the function is odr-used (6.3) or, if it appears in an unevaluated operand,
@@ -2772,9 +2774,9 @@ A contract annotation  is considered to be <em>needed</em> when:
 
 <p class="editor">This implies that contract predicates are not in the immediate context
     in overload resolution.</p>
-  
+
 <blockquote class="stdins">
-  
+
 <p> 5. TODO: renumber
 A precondition test (9.12.4.3) is performed immediately before starting evaluation of the function
 body. [<i>Note</i>: The function body includes the <em>function-try-block</em> (Clause 14) and the <em>ctor-initializer</em> (11.9.3).
@@ -3108,8 +3110,8 @@ specialization are independent of those of the primary template.— <i>end note<
 
 <p> 14.
 [<i>Note</i>: The equivalent substitution in contract annotations (9.12.4.2)
-is done only when the contract annotation is instantiated, at which point a 
-program is ill-formed if the substitution results in an invalid type or 
+is done only when the contract annotation is instantiated, at which point a
+program is ill-formed if the substitution results in an invalid type or
 expression.— <i>end note</i>]
 </p>
 
