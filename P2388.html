@@ -210,6 +210,10 @@ runtime-check contract annotations in core constant expressions even in
   <li>Added open issue for the risk of infinite recursion when checking poorly designed
       contract annotations. See section <a href="#ope.inf">{ope.inf}</a>.
       </li>
+      
+  <li>Fix in wording: you cannot introduce a name in the postcondition if the function
+      return type is <code>void</code>.
+      </li>
 </ol>
 
 
@@ -2707,8 +2711,14 @@ auto h(int&amp; p)
 <p> — <i>end example</i>]</p>
 <p></p>
 
-
 <p> 4.
+
+If a postcondition introduces an identifier and the return type of the function is <code>void</code>,
+the program is ill-formed.
+
+</p>
+
+<p> 5.
   A <i>correctness-specifier</i> using <tt>assert</tt> is an <i>assertion</i>.
 
   The specifier may be applied to a null statement (8.3).
@@ -2721,7 +2731,7 @@ auto h(int&amp; p)
   this indicates that the program contains a bug. — <i>end note</i>]
 </p>
 
-<p>5. Preconditions, postconditions, and assertions are collectively called <em>correctness annotations</em>.
+<p>6. Preconditions, postconditions, and assertions are collectively called <em>correctness annotations</em>.
 The <em>conditional-expression</em> in a correctness annotation is contextually converted to <code>bool</code> (7.3);
 the converted expression is called the <em>predicate</em> of the correctness annotation.
 
@@ -2844,7 +2854,7 @@ A contract annotation  is considered to be <em>needed</em> when:
   
 <blockquote class="stdins">
   
-<p> 5. TODO: renumber
+<p> 6.
 A precondition test (9.12.4.3) is performed immediately before starting evaluation of the function
 body. [<i>Note</i>: The function body includes the <em>function-try-block</em> (Clause 14) and the <em>ctor-initializer</em> (11.9.3).
 — <i>end note</i>] A postcondition test is performed immediately before returning control to
@@ -2854,7 +2864,7 @@ note</i>]
 </p>
 
 
-<p> 6.
+<p> 7.
 
 The <em>basic precondition test sequence</em> of a given function <code>f</code> is the sequence of
 precondition tests corresponding to the list of preconditions of <code>f</code>.
@@ -2895,7 +2905,7 @@ The basic postcondition test sequence consists of two postconditions correspondi
 — <i>end example</i>]
 </p>
 
-<p> 7.
+<p> 8.
 
 If a predicate in the postcondition odr-uses (6.3) a non-reference parameter,
 this parameter shall be defined <code>const</code> inside the function definition.
@@ -2919,7 +2929,7 @@ int g(int i)        <em>// error: i is not declared const</em>
 }</pre>
 <p>— <i>end example</i>]</p>
 
-<p> 8.
+<p> 9.
 
 The postcondition test sequence (9.12.4.3) is
 sequenced after the initialization of the returned value, and
