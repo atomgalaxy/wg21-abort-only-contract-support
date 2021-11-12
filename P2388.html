@@ -53,10 +53,10 @@ td { text-align: left;  padding-left: 0.4em; border: none;  padding-right: 0.4em
 
 <table class="header"><tbody>
   <tr>
-    <th>Document number:&nbsp;&nbsp;</th><th> </th><td>D2388R3</td>
+    <th>Document number:&nbsp;&nbsp;</th><th> </th><td>D2388R4</td>
   </tr>
   <tr>
-    <th>Date:&nbsp;&nbsp;</th><th> </th><td>2021-10-13</td>
+    <th>Date:&nbsp;&nbsp;</th><th> </th><td>2021-11-12</td>
   </tr>
   <tr>
     <th>Audience:&nbsp;&nbsp;</th><th> </th><td>SG21, SG22</td>
@@ -202,6 +202,17 @@ runtime-check contract annotations in core constant expressions even in
   <li>Added open issue for the validity of the programming model. See section <a href="#ope.mod">{ope.mod}</a>.
       </li>
 </ol>
+
+
+<h3><a name="rev.r04">0.4. R3 → R4<span class="link">{rev.r04}</span></a></h3>
+
+<ol>
+  <li>Added open issue for the risk of infinite recursion when checking poorly designed
+      contract annotations. See section <a href="#ope.inf">{ope.inf}</a>.
+      </li>
+</ol>
+
+
 
 
 <h2><a name="term">1. Terminology <span class="link">{def}</span></a></h2>
@@ -2464,8 +2475,60 @@ ForwardIt find(ForwardIt first, ForwardIt last, const T&amp; value)
     described in section <a href="#rat.arg">{rat.arg}</a>. This is a clear indication
     to the autors that the model for describing semantics of contract annotations
     needs to be revisited.</p>
+ 
+
+<h3><a name="ope.inf">9.5. The risk of infinite resursion <span class="link">{ope.inf}</span></a></h3>
     
-    
+
+<p> Generally, a precondition is the <em>minimum</em> 
+    set of requirements necessary for the invoked function to work within 
+    its contract. However, if contract support is added to C++ in the form of
+    preconditions and postconditions, but with missing class invariants,
+    a passionate programmer may implement the idea that "a class invariant
+    is a precondition on every public member function of a class", by checking the
+    invariant as a precondition in every pubic member funciton: </p>
+
+<pre>
+class Container
+{
+  <em>// ...</em>
+  
+public:
+  bool invariant() const { return (size() == 0) == empty(); }
+
+  int size() const [[pre: invariant()]];
+  bool empty() const [[pre: invariant()]];
+};
+</pre>
+
+<p> One can easily see how this could lead into infinite recursion.
+    The problem here is that the programmer tries to check <em>anything</em>
+    that is potentially interesting as opposed to the <em>minimum</em>
+    function requirements.
+    </p>
+
+<p> We can think of two ways to approach this. One is to educate the programmers 
+    that this is a dangerous thing to do, and trust them that they will avoid
+    declarations like the above. The other is to disable the runtime checking
+    of contract annotations when we are inside the evaluation of another contract
+    anotation. The consequence of this technique would be that you cannot call
+    functions in preconditions that themselves declare preconditions; and
+    this would mean that all your preconditions must have a wide contract:</p>
+
+<pre>
+bool a(T v) [[pre: true]];         <em>// wide contract</em>
+bool b(T v) [[pre: a(v)]]; 
+
+bool f(T v) [[pre: b(v)]];         <em>// bad</em>
+bool g(T v) [[pre: a(v) &amp;&amp; b(v)]]; <em>// good</em>
+</pre>
+
+<p> This second approach has been implemented in Boost.Contract library 
+    (<a href="https://www.boost.org/doc/libs/1_77_0/libs/contract/doc/html/index.html">[CAMINITI]</a>).</p>
+
+
+
+
 
 
 <h2><a name="wor">10. Wording <span class="link">{wor}</span></a></h2>
@@ -3211,7 +3274,12 @@ handler (9.12.4.2). — <i>end note</i>]
       "Proposal to add Contract Programming to C++ (revision 4)" <br>
       (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2006/n1962.html">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2006/n1962.html</a>).
       </li>
-
+   
+  <li>[CAMINITI] — Lorenzo Caminiti,
+      Boost.Contract library <br>
+      (<a href="https://www.boost.org/doc/libs/1_77_0/libs/contract/doc/html/index.html">https://www.boost.org/doc/libs/1_77_0/libs/contract/doc/html/index.html</a>).
+      </li>   
+  
   <li>[N4110] — J. Daniel Garcia,
       "Exploring the design space of contract specifications for C++" <br>
       (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4110.pdf">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4110.pdf</a>).
