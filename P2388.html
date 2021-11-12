@@ -2450,6 +2450,12 @@ ForwardIt find(ForwardIt first, ForwardIt last, const T&amp; value)
     will either come with a different syntax, or a strong rationale for 
     using the attribute-like notation.</p>
 
+<p> The discussion about the choice of attribute-like syntax is provided in 
+    <a href="https://isocpp.org/files/papers/P2487R0.html">[P2487R0]</a>.
+    An alternative notation for contract annotations is explored in
+    <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2461r0.pdf">[P2461R0]</a>.</p>
+    
+
 
 <h3><a name="ope.eff">9.3. The granularity of side effect elision
     <span class="link">{ope.eff}</span></a></h3>
@@ -2467,17 +2473,17 @@ ForwardIt find(ForwardIt first, ForwardIt last, const T&amp; value)
 <p> The notion of preconditions, postconditions and invariants originated 
     from functional programming languages, where terms "value" and "predicate"
     make a lot of sense. In this paper we try to introduce preconditions and
-    postconditions to an imperative language that doesnt have "values" or 
+    postconditions to an imperative language that doesn't have "values" or 
     "predicates": it has "objects", "states" and "functions". We observed that 
     we are are still applying terms "value" and "predicate" when describing
     the semantics of contract annotations. This is likely to lead to bugs in
     the design. The symptom of one such bug has recently been revealed and 
     described in section <a href="#rat.arg">{rat.arg}</a>. This is a clear indication
-    to the autors that the model for describing semantics of contract annotations
+    to the authors that the model for describing semantics of contract annotations
     needs to be revisited.</p>
  
 
-<h3><a name="ope.inf">9.5. The risk of infinite resursion <span class="link">{ope.inf}</span></a></h3>
+<h3><a name="ope.inf">9.5. The risk of infinite recursion <span class="link">{ope.inf}</span></a></h3>
     
 
 <p> Generally, a precondition is the <em>minimum</em> 
@@ -2486,7 +2492,7 @@ ForwardIt find(ForwardIt first, ForwardIt last, const T&amp; value)
     preconditions and postconditions, but with missing class invariants,
     a passionate programmer may implement the idea that "a class invariant
     is a precondition on every public member function of a class", by checking the
-    invariant as a precondition in every pubic member funciton: </p>
+    invariant as a precondition in every pubic member function: </p>
 
 <pre>
 class Container
@@ -2511,7 +2517,7 @@ public:
     that this is a dangerous thing to do, and trust them that they will avoid
     declarations like the above. The other is to disable the runtime checking
     of contract annotations when we are inside the evaluation of another contract
-    anotation. The consequence of this technique would be that you cannot call
+    annotation. The consequence of this technique would be that you cannot call
     functions in preconditions that themselves declare preconditions; and
     this would mean that all your preconditions must have a wide contract:</p>
 
@@ -3299,12 +3305,24 @@ handler (9.12.4.2). — <i>end note</i>]
       "A Contract Design" <br>
       (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0380r0.pdf">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0380r0.pdf</a>).
       </li>
-
+      
+  <li>[P0465R0] — Lisa Lippincott,
+      "Procedural function interfaces" <br>
+      (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0465r0.pdf">
+          http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0465r0.pdf</a>).
+      </li>
+      
   <li>[P1494R1] — S. Davis Herring, "Partial program correctness" <br>
       (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1494r1.html">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1494r1.html</a>).
       </li>
+      
+  <li>[P1893R0] — Andrew Tomazos,
+      "Proposal of Contract Primitives" <br>
+      (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1893r0.pdf">
+          http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1893r0.pdf</a>).
+      </li>
 
-  <li>[P2176r0] — Andrzej Krzemieński, "A different take on inexpressible conditions" <br>
+  <li>[P2176R0] — Andrzej Krzemieński, "A different take on inexpressible conditions" <br>
           (<a href="https://isocpp.org/files/papers/P2176R0.html"
           >https://isocpp.org/files/papers/P2176R0.html</a>).
           </li>
@@ -3370,6 +3388,15 @@ handler (9.12.4.2). — <i>end note</i>]
 
   <li>[P0627R5] — Melissa Mears, Jens Maurer, "Function to mark unreachable code"<br>
       (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p0627r5.pdf">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p0627r5.pdf</a>).</li>
+
+  <li>[P2466R0] — Andrzej Krzemieński, "The notes on contract annotations"<br>
+      (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2466r0.html">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2466r0.html</a>).</li>
+      
+  <li>[P2461R0] — Gašper Ažman, Caleb Sunstrum, Bronek Kozicki, "Closure-Based Syntax for Contracts"<br>
+      (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2461r0.pdf">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2461r0.pdf</a>).</li>
+
+  <li>[P2487R0] — Andrzej Krzemieński, "Attribute-like syntax for contract annotations"<br>
+      (<a href="https://isocpp.org/files/papers/P2487R0.html">https://isocpp.org/files/papers/P2487R0.html</a>).</li>
 
   <li>[LOPEZ19] — Javier López-Gómez, J. Daniel García, "Adding support for C++ contracts to Clang"<br>
       (<a href="https://llvm.org/devmtg/2019-04/slides/Poster-Lopez-Gomez-Adding_support_for_C++_contracts_to_Clang.pdf">https://llvm.org/devmtg/2019-04/slides/Poster-Lopez-Gomez-Adding_support_for_C++_contracts_to_Clang.pdf</a>).</li>
