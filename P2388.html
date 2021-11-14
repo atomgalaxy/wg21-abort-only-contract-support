@@ -56,7 +56,7 @@ td { text-align: left;  padding-left: 0.4em; border: none;  padding-right: 0.4em
     <th>Document number:&nbsp;&nbsp;</th><th> </th><td>D2388R4</td>
   </tr>
   <tr>
-    <th>Date:&nbsp;&nbsp;</th><th> </th><td>2021-11-12</td>
+    <th>Date:&nbsp;&nbsp;</th><th> </th><td>2021-11-14</td>
   </tr>
   <tr>
     <th>Audience:&nbsp;&nbsp;</th><th> </th><td>SG21, SG22</td>
@@ -80,7 +80,7 @@ Minimum Viable Product (MVP) achieving the following goals:
 
 <ol>
   <li>Be a coherent whole, and provide a value to multiple groups of developers.</li>
-  <li>Be small enough to progress through the standardization pipeline for c++23.</li>
+  <li>Be small enough to progress through the standardization pipeline for c++26.</li>
   <li>Side-step all controversial design issues to obtain consensus.</li>
 </ol>
 
@@ -210,7 +210,7 @@ runtime-check contract annotations in core constant expressions even in
   <li>Added open issue for the risk of infinite recursion when checking poorly designed
       contract annotations. See section <a href="#ope.inf">{ope.inf}</a>.
       </li>
-      
+
   <li>Fix in wording: you cannot introduce a name in the postcondition if the function
       return type is <code>void</code>.
       </li>
@@ -498,14 +498,14 @@ befriended functions.
 <p> In section <a href="#rat.con">{rat.con}</a>, we describe
     why the design of the continuation mode, such that it
     avoids introducing surprising new reasons for undefined behavior
-    and gathers consensus, will take a long time, and thus not be ready for C++23.
+    and gathers consensus, will take a long time, and thus not be ready for C++26.
     </p>
 
 <p> We can see two options:</p>
 
 <ol>
-    <li>Deliver a feature-rich solution for C++26, or later, or never.</li>
-    <li>Deliver a reduced set of features for C++23; deliver the remaining features for C++26, or later or never.</li>
+    <li>Deliver a feature-rich solution for C++29, or later, or never.</li>
+    <li>Deliver a reduced set of features for C++26; deliver the remaining features for C++29, or later or never.</li>
     </ol>
 
 <p> The latter option subsumes the former, even if one
@@ -1104,15 +1104,15 @@ struct Deriv : Base
 
 <p> In this proposal the predicates in contract annotations are <em>not</em> in the
     immediate context of the function. They behave similarly to exception specification:</p>
-    
+
 <pre>
 template &lt;std::regular T&gt;
 void f(T v, T u)
   [[pre: v &lt; u]]; <em>// not part of std::regular</em>
 
 template &lt;typename T&gt;
-constexpr bool has_f = 
-  std::regular&lt;T&gt; &amp;&amp; 
+constexpr bool has_f =
+  std::regular&lt;T&gt; &amp;&amp;
   requires(T v, T u) { f(v, u); };
 
 static_assert( has_f&lt;std::string&gt;);         <em>// OK: has_f returns true</em>
@@ -1239,7 +1239,7 @@ int f(int i)
 <p> An alternate syntax might be possible, but the design is subject to a number
     of concerns already mentioned. Also, providing a novel syntax would be incompatible
     with our primary goal: to provide the ability to declare contract annotations
-    still in C++23. Experimenting with new syntax, waiting for a reference implementation
+    still in C++26. Experimenting with new syntax, waiting for a reference implementation
     will surely make the process longer. While doing things fast can never be a primary goal,
     there is also a risk of improving the design forever. An alternative syntax
     should offer a clear and significant improvement over the current one. </p>
@@ -2063,9 +2063,9 @@ public:
 
 <p> We could provide the placeholder syntax for these annotations still in the MVP,
     so that C++ compilers can start parsing it as soon as possible, before we standardize individual "meta-annotations".
-    This way, programs written in C++30 would compile in C++23 compilers (assuming this paper is accepted for C++23).</p>
+    This way, programs written in C++30 would compile in C++26 compilers (assuming this paper is accepted for C++26).</p>
 
-<p> The serious concern about this idea is that while these meta-annotations will be parsed in C++23, they will have different
+<p> The serious concern about this idea is that while these meta-annotations will be parsed in C++26, they will have different
     semantics than in the future revisions of C++. This silent change of semantics is unacceptable. For this reason, we do not
     propose the placeholder syntax for meta-annotations.</p>
 
@@ -2215,9 +2215,9 @@ bool bar(int i)
 
 <p> This decision is a consequence of modelling contract annotations after <code>noexcept</code>.
     Alternative designs would be:</p>
-    
+
 <ol>
-<li>Make contract annotations part of the immediate context, and thus remove functions from 
+<li>Make contract annotations part of the immediate context, and thus remove functions from
     the overload set even if only contract annotations contain invalid expressions.</li>
 <li>Silently skip the contract type checking and runtime evaluation if the expression
     in the contract annotation is invalid.</li>
@@ -2227,14 +2227,14 @@ bool bar(int i)
 <p> Discarding the first alternative simplifies our model: we can say that contract
     annotations do not affect the type system. The second alternative could cause runtime surprises,
     where the programmer might be let to believe that their contract is enforced, when it is not.
-    </p> 
-    
-<p> The solution that we chose also comes with a surprise: "my program stopped compiling only 
+    </p>
+
+<p> The solution that we chose also comes with a surprise: "my program stopped compiling only
     because I added a contract". However, this is a compile-time surprise, which we find prefereble
-    to runtime surprises. We also believe that this potential surprise will be mitigated by 
+    to runtime surprises. We also believe that this potential surprise will be mitigated by
     guideline that concepts constraining the generic functions should also include operations
     whose only use is to check the function preconditions:</p>
-  
+
 <pre>
 template &lt;Arithmetic T&gt;
 T scale(T a, T b)
@@ -2248,10 +2248,10 @@ concept Arithmetic = requires(T a, T b)
 {
   { a / b } -&gt; std::convertible_to&lt;T&gt;;
   <em>// other operations</em>
-  
+
   T{0}; <em>// in case we need to specify function contract</em>
 };
-</pre>  
+</pre>
 
 
 <p> Another possibility would be to provide a way for the function author to say,
@@ -2335,8 +2335,8 @@ T scale(T a, T b)
     </p>
 
 <p> It is also possible to do negative testing of preconditions and
-    postconditions by offering a set of reflection features tailored 
-    to that eventuality, without even running the function. A strawman 
+    postconditions by offering a set of reflection features tailored
+    to that eventuality, without even running the function. A strawman
     proposal could be <code>std::are_preconditions_satisfied(f, x, y, z) -&gt; bool</code>.
     </p>
 
@@ -2446,52 +2446,52 @@ ForwardIt find(ForwardIt first, ForwardIt last, const T&amp; value)
 
 <h3><a name="ope.att">9.2. The usage of attribute-like notation
     <span class="link">{ope.att}</span></a></h3>
-    
-<p> There has been a number of concerns raised against the usage of 
+
+<p> There has been a number of concerns raised against the usage of
     attribute-like syntax for contract annotations. This paper does
-    not provide rationale for the choice of syntax. The syntax was inherited from 
-    P0542-contracts. The future revisions 
-    will either come with a different syntax, or a strong rationale for 
+    not provide rationale for the choice of syntax. The syntax was inherited from
+    P0542-contracts. The future revisions
+    will either come with a different syntax, or a strong rationale for
     using the attribute-like notation.</p>
 
-<p> The discussion about the choice of attribute-like syntax is provided in 
+<p> The discussion about the choice of attribute-like syntax is provided in
     <a href="https://isocpp.org/files/papers/P2487R0.html">[P2487R0]</a>.
     An alternative notation for contract annotations is explored in
     <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2461r0.pdf">[P2461R0]</a>.</p>
-    
+
 
 
 <h3><a name="ope.eff">9.3. The granularity of side effect elision
     <span class="link">{ope.eff}</span></a></h3>
 
 <p> There is a number of ways to specify what visible changes to
-    side effects in contract predicates a compiler is allowed to 
+    side effects in contract predicates a compiler is allowed to
     apply in <em>Eval_and_abort</em> mode. We are still investigating
     which of those ways to chose.
     </p>
-    
+
 <h3><a name="ope.mod">9.4. The programming model for preconditions
     and postconditions
     <span class="link">{ope.mod}</span></a></h3>
-    
-<p> The notion of preconditions, postconditions and invariants originated 
+
+<p> The notion of preconditions, postconditions and invariants originated
     from functional programming languages, where terms "value" and "predicate"
     make a lot of sense. In this paper we try to introduce preconditions and
-    postconditions to an imperative language that doesn't have "values" or 
-    "predicates": it has "objects", "states" and "functions". We observed that 
+    postconditions to an imperative language that doesn't have "values" or
+    "predicates": it has "objects", "states" and "functions". We observed that
     we are are still applying terms "value" and "predicate" when describing
     the semantics of contract annotations. This is likely to lead to bugs in
-    the design. The symptom of one such bug has recently been revealed and 
+    the design. The symptom of one such bug has recently been revealed and
     described in section <a href="#rat.arg">{rat.arg}</a>. This is a clear indication
     to the authors that the model for describing semantics of contract annotations
     needs to be revisited.</p>
- 
+
 
 <h3><a name="ope.inf">9.5. The risk of infinite recursion <span class="link">{ope.inf}</span></a></h3>
-    
 
-<p> Generally, a precondition is the <em>minimum</em> 
-    set of requirements necessary for the invoked function to work within 
+
+<p> Generally, a precondition is the <em>minimum</em>
+    set of requirements necessary for the invoked function to work within
     its contract. However, if contract support is added to C++ in the form of
     preconditions and postconditions, but with missing class invariants,
     a passionate programmer may implement the idea that "a class invariant
@@ -2502,7 +2502,7 @@ ForwardIt find(ForwardIt first, ForwardIt last, const T&amp; value)
 class Container
 {
   <em>// ...</em>
-  
+
 public:
   bool invariant() const { return (size() == 0) == empty(); }
 
@@ -2517,7 +2517,7 @@ public:
     function requirements.
     </p>
 
-<p> We can think of two ways to approach this. One is to educate the programmers 
+<p> We can think of two ways to approach this. One is to educate the programmers
     that this is a dangerous thing to do, and trust them that they will avoid
     declarations like the above. The other is to disable the runtime checking
     of contract annotations when we are inside the evaluation of another contract
@@ -2527,13 +2527,13 @@ public:
 
 <pre>
 bool a(T v) [[pre: true]];         <em>// wide contract</em>
-bool b(T v) [[pre: a(v)]]; 
+bool b(T v) [[pre: a(v)]];
 
 bool f(T v) [[pre: b(v)]];         <em>// bad</em>
 bool g(T v) [[pre: a(v) &amp;&amp; b(v)]]; <em>// good</em>
 </pre>
 
-<p> This second approach has been implemented in Boost.Contract library 
+<p> This second approach has been implemented in Boost.Contract library
     (<a href="https://www.boost.org/doc/libs/1_77_0/libs/contract/doc/html/index.html">[CAMINITI]</a>).
   The first approach has been implemented in D: <a href="https://d.godbolt.org/z/86zv45TnK">
   https://d.godbolt.org/z/86zv45TnK</a>.</p>
@@ -2837,7 +2837,7 @@ A contract annotation  is considered to be <em>needed</em> when:
 </p>
 
 <ul>
-<li>in an expression, the function is selected by overload resolution 
+<li>in an expression, the function is selected by overload resolution
     (<a href="https://timsong-cpp.github.io/cppwp/over.match">[over.match]</a>, <a href="https://timsong-cpp.github.io/cppwp/over.over">[over.over]</a>);
     </li>
 <li>the function is odr-used (6.3) or, if it appears in an unevaluated operand,
@@ -2853,9 +2853,9 @@ A contract annotation  is considered to be <em>needed</em> when:
 
 <p class="editor">This implies that contract predicates are not in the immediate context
     in overload resolution.</p>
-  
+
 <blockquote class="stdins">
-  
+
 <p> 6.
 A precondition test (9.12.4.3) is performed immediately before starting evaluation of the function
 body. [<i>Note</i>: The function body includes the <em>function-try-block</em> (Clause 14) and the <em>ctor-initializer</em> (11.9.3).
@@ -3189,8 +3189,8 @@ specialization are independent of those of the primary template.— <i>end note<
 
 <p> 14.
 [<i>Note</i>: The equivalent substitution in contract annotations (9.12.4.2)
-is done only when the contract annotation is instantiated, at which point a 
-program is ill-formed if the substitution results in an invalid type or 
+is done only when the contract annotation is instantiated, at which point a
+program is ill-formed if the substitution results in an invalid type or
 expression.— <i>end note</i>]
 </p>
 
@@ -3292,12 +3292,12 @@ handler (9.12.4.2). — <i>end note</i>]
       "Proposal to add Contract Programming to C++ (revision 4)" <br>
       (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2006/n1962.html">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2006/n1962.html</a>).
       </li>
-   
+
   <li>[CAMINITI] — Lorenzo Caminiti,
       Boost.Contract library <br>
       (<a href="https://www.boost.org/doc/libs/1_77_0/libs/contract/doc/html/index.html">https://www.boost.org/doc/libs/1_77_0/libs/contract/doc/html/index.html</a>).
-      </li>   
-  
+      </li>
+
   <li>[N4110] — J. Daniel Garcia,
       "Exploring the design space of contract specifications for C++" <br>
       (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4110.pdf">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4110.pdf</a>).
@@ -3317,17 +3317,17 @@ handler (9.12.4.2). — <i>end note</i>]
       "A Contract Design" <br>
       (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0380r0.pdf">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0380r0.pdf</a>).
       </li>
-      
+
   <li>[P0465R0] — Lisa Lippincott,
       "Procedural function interfaces" <br>
       (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0465r0.pdf">
           http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0465r0.pdf</a>).
       </li>
-      
+
   <li>[P1494R1] — S. Davis Herring, "Partial program correctness" <br>
       (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1494r1.html">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1494r1.html</a>).
       </li>
-      
+
   <li>[P1893R0] — Andrew Tomazos,
       "Proposal of Contract Primitives" <br>
       (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1893r0.pdf">
@@ -3403,7 +3403,7 @@ handler (9.12.4.2). — <i>end note</i>]
 
   <li>[P2466R0] — Andrzej Krzemieński, "The notes on contract annotations"<br>
       (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2466r0.html">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2466r0.html</a>).</li>
-      
+
   <li>[P2461R0] — Gašper Ažman, Caleb Sunstrum, Bronek Kozicki, "Closure-Based Syntax for Contracts"<br>
       (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2461r0.pdf">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2461r0.pdf</a>).</li>
 
