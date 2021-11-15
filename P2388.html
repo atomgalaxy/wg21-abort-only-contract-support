@@ -319,14 +319,14 @@ befriended functions.
 
 <h3>Side-effects</h3>
 
-<p> Side effects are supported in the predicates of contract annotations.
-    Implementations are allowed to both remove or duplicate these side effects,
-    so they cannot be relied upon. This is similar to the existing rules around eliding copy-constructor side-effects.
+<p> This proposal does not actively prevent programmers from putting predicates with
+    side effects inside contract annotations. However, doing so may have surprising
+    effects if the program relies on these side effects. </p>
 
-<p> Looking at the source code with contract annotations alone — that is, not looking at compiler switches —
-    the programmer has no guarantee if predicates in contract annotation will be evaluated at runtime or not, or
-    if the program is stopped after such evaluation. Whether the side effects of predicates are evaluated
-    (one or more times) or not — even in <em>Eval_and_abort</em> mode — is unspecified.</p>
+<p> Compilers are allowed to remove or duplicate these side effects (or parts thereof,
+    on subexpression basis) at their discretion, in <em>Eval_and_abort</em>
+    mode. In other words, mode <em>Eval_and_abort</em> guarantees that we will
+    compute the result of a predicate, but not that we will evalueate its side effects.</p>
 
 <h3>Mixed-mode linking</h3>
 
@@ -865,12 +865,12 @@ consume(produce());
 
 <p>The compiler is also allowed to call the predicate twice:</p>
 
-<pre>void f(int i) [[pre: p(i)]] [[pre: q(i)]];
+<pre>void f(int i) [[pre: p1(i)]] [[pre: p2(i)]];
 </pre>
 
 <p> When function <code>f()</code> is evaluated, it might cause
-    the following sequence of precondition tests: <code>p(i)</code>,
-    <code>q(i)</code>, <code>p(i)</code>, <code>q(i)</code>.
+    the following sequence of precondition tests: <code>p1(i)</code>,
+    <code>p2(i)</code>, <code>p1(i)</code>, <code>p2(i)</code>.
     This allows the implementations to test the preconditions
     both inside and outside the function body. This ability is
     useful for generating good error messages from preconditions:
