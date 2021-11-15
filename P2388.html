@@ -2457,7 +2457,7 @@ ForwardIt find(ForwardIt first, ForwardIt last, const T&amp; value)
 <p> The discussion about the choice of attribute-like syntax is provided in
     <a href="https://isocpp.org/files/papers/P2487R0.html">[P2487R0]</a>.
     An alternative notation for contract annotations is explored in
-    <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2461r0.pdf">[P2461R0]</a>.</p>
+    <a href="https://isocpp.org/files/papers/P2461R1.pdf">[P2461R1]</a>.</p>
 
 
 
@@ -3324,8 +3324,8 @@ handler (9.12.4.2). — <i>end note</i>]
           http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0465r0.pdf</a>).
       </li>
 
-  <li>[P1494R1] — S. Davis Herring, "Partial program correctness" <br>
-      (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1494r1.html">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1494r1.html</a>).
+  <li>[P1494R2] — S. Davis Herring, "Partial program correctness" <br>
+      (<a href="https://isocpp.org/files/papers/P1494R2.html">https://isocpp.org/files/papers/P1494R2.html</a>).
       </li>
 
   <li>[P1893R0] — Andrew Tomazos,
@@ -3404,8 +3404,8 @@ handler (9.12.4.2). — <i>end note</i>]
   <li>[P2466R0] — Andrzej Krzemieński, "The notes on contract annotations"<br>
       (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2466r0.html">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2466r0.html</a>).</li>
 
-  <li>[P2461R0] — Gašper Ažman, Caleb Sunstrum, Bronek Kozicki, "Closure-Based Syntax for Contracts"<br>
-      (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2461r0.pdf">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2461r0.pdf</a>).</li>
+  <li>[P2461R1] — Gašper Ažman, Caleb Sunstrum, Bronek Kozicki, "Closure-Based Syntax for Contracts"<br>
+      (<a href="https://isocpp.org/files/papers/P2461R1.pdf">https://isocpp.org/files/papers/P2461R1.pdf</a>).</li>
 
   <li>[P2487R0] — Andrzej Krzemieński, "Attribute-like syntax for contract annotations"<br>
       (<a href="https://isocpp.org/files/papers/P2487R0.html">https://isocpp.org/files/papers/P2487R0.html</a>).</li>
@@ -3430,15 +3430,15 @@ handler (9.12.4.2). — <i>end note</i>]
     what would be observed as removing the log entry for the contract violation.
     This has been described in detail in
    <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2339r0.html">[P2339R0]</a> as well as in
-   <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1494r1.html">[P1494R1]</a>.
+   <a href="https://isocpp.org/files/papers/P1494R2.html">[P1494R2]</a>.
    This is no worse than disabling runtime checking altogether (which is uncontroversial),
    but can really fool whoever troubleshoots the bug: we see no contract-violation log entry,
    so we think control never reached this point, even though it did. Thus, the continuing violation
    handler has the potential to deceive whoever uses contract violation logs. There is no agreement
    on how realistic the possibility of encountering this effect is. The solution presented in
-   <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1494r1.html">[P1494R1]</a>
+   <a href="https://isocpp.org/files/papers/P1494R2.html">[P1494R2]</a>
     has the potential to address the above issue. But until this is explored, any wider contract proposal that
-    allows continuation would be blocked on <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1494r1.html">[P1494R1]</a>.</p>
+    allows continuation would be blocked on <a href="https://isocpp.org/files/papers/P1494R2.html">[P1494R2]</a>.</p>
 
 <p> Second, the continuation mode can introduce new abstract machine violations. Going back to the example provided earlier:</p>
 
